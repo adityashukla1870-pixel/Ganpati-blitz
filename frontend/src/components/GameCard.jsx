@@ -41,126 +41,143 @@ export default function GameCard({
       {/* Main card body */}
       <div style={{
         position: 'relative',
-        background: gradient || `linear-gradient(135deg, ${color}, #2a0f4e)`,
+        background: 'rgba(16, 12, 34, 0.92)',
         borderRadius: 'var(--radius-xl)',
-        padding: '1.5rem 1.25rem 1.25rem',
-        display: 'flex', flexDirection: 'column', gap: '0.6rem',
-        minHeight: 200,
-        border: '2px solid rgba(255,255,255,0.12)',
+        display: 'flex', flexDirection: 'column',
+        minHeight: 220,
+        border: '1px solid rgba(255,255,255,0.12)',
         overflow: 'hidden',
+        boxShadow: '0 8px 24px rgba(0,0,0,0.4)',
         transition: 'border-color 0.3s, box-shadow 0.3s',
       }}>
-        {/* Glossy sheen overlay */}
+        {/* Top accent line */}
         <div style={{
-          position: 'absolute', inset: 0,
-          background: 'linear-gradient(165deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.05) 35%, transparent 60%)',
-          pointerEvents: 'none', zIndex: 1,
+          position: 'absolute', top: 0, left: 0, right: 0, height: 3,
+          background: gradient || color, zIndex: 4,
         }} />
 
-        {/* Decorative corner glow */}
+        {/* Big Artwork Area with Overlay Play Disc */}
         <div style={{
-          position: 'absolute', top: -30, right: -30, width: 120, height: 120,
-          background: `radial-gradient(circle, ${color}55, transparent 70%)`,
-          pointerEvents: 'none', zIndex: 0,
-        }} />
-
-        {/* Bottom glow on hover via CSS */}
-        <div style={{
-          position: 'absolute', bottom: 0, left: 0, right: 0, height: '50%',
-          background: `radial-gradient(ellipse at 50% 100%, ${color}30, transparent 70%)`,
-          pointerEvents: 'none', zIndex: 0,
-          opacity: 0, transition: 'opacity 0.3s',
-        }} className="cabinet-glow" />
-
-        {/* Large icon area */}
-        <div style={{ position: 'relative', zIndex: 2, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          <div style={{
-            width: 62, height: 62, borderRadius: 18,
-            background: 'rgba(255,255,255,0.15)',
-            border: '2px solid rgba(255,255,255,0.3)',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            boxShadow: 'inset 0 2px 0 rgba(255,255,255,0.3), 0 4px 12px rgba(0,0,0,0.3)',
-            overflow: 'hidden',
-          }}>
-            {image ? (
-              <img
-                src={image}
-                alt={title}
-                style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 16 }}
-              />
-            ) : (
-              <LogoSquare size={54} style={{ width: '100%', height: '100%', maxWidth: '100%', maxHeight: '100%' }} />
-            )}
-          </div>
-        </div>
-
-        {/* Text content */}
-        <div style={{ position: 'relative', zIndex: 2, flex: 1 }}>
-          <h3 style={{
-            fontSize: '1.2rem', fontWeight: 900, color: '#fff', margin: '0 0 0.2rem',
-            fontFamily: 'var(--font-display)',
-            textShadow: '0 2px 8px rgba(0,0,0,0.4)',
-            lineHeight: 1.1,
-          }}>
-            {title}
-          </h3>
-          {description && (
-            <p style={{
-              fontSize: '0.78rem', color: 'rgba(255,255,255,0.85)', margin: 0,
-              lineHeight: 1.35,
-            }}>
-              {description}
-            </p>
-          )}
-        </div>
-
-        {/* Bottom bar */}
-        <div style={{
-          position: 'relative', zIndex: 2,
-          display: 'flex', alignItems: 'center', justifyContent: 'space-between',
-          marginTop: '0.15rem',
+          position: 'relative', width: '100%', height: 140,
+          overflow: 'hidden', background: 'rgba(0,0,0,0.5)',
         }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-            {bestScore > 0 && (
-              <span style={{
-                display: 'inline-flex', alignItems: 'center', gap: '0.2rem',
-                fontSize: '0.7rem', color: 'rgba(255,255,255,0.9)', fontWeight: 700,
+          {image ? (
+            <img
+              src={image}
+              alt={title}
+              className="cabinet-img"
+              style={{
+                width: '100%', height: '100%', objectFit: 'cover',
+                display: 'block', transition: 'transform 0.4s ease',
+              }}
+            />
+          ) : (
+            <div style={{
+              width: '100%', height: '100%', display: 'flex',
+              alignItems: 'center', justifyContent: 'center',
+              background: gradient || color,
+            }}>
+              <LogoSquare size={54} />
+            </div>
+          )}
+
+          {/* Vignette */}
+          <div style={{
+            position: 'absolute', inset: 0,
+            background: 'linear-gradient(180deg, rgba(0,0,0,0.35) 0%, rgba(0,0,0,0.05) 45%, rgba(16, 12, 34, 0.95) 100%)',
+            pointerEvents: 'none', zIndex: 1,
+          }} />
+
+          {/* Multiplayer badge if supported */}
+          {multiplayer && (
+            <div style={{
+              position: 'absolute', top: 10, right: 10, zIndex: 3,
+              padding: '0.2rem 0.55rem', borderRadius: 'var(--radius-full)',
+              background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(8px)',
+              border: '1px solid rgba(255,255,255,0.25)',
+              fontSize: '0.65rem', color: '#FFF', fontWeight: 800,
+              display: 'flex', alignItems: 'center', gap: '0.25rem',
+            }}>
+              <Swords size={11} /> 1v1
+            </div>
+          )}
+
+          {/* Center Overlay Play Button */}
+          <div style={{
+            position: 'absolute', inset: 0,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            zIndex: 2, pointerEvents: 'none',
+          }}>
+            <div className="cabinet-play-disc" style={{
+              width: 48, height: 48, borderRadius: 'var(--radius-full)',
+              background: 'linear-gradient(135deg, var(--festival-saffron, #FF8C42), var(--festival-gold, #FFD166))',
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              boxShadow: '0 0 20px rgba(255,140,66,0.6), 0 4px 12px rgba(0,0,0,0.5)',
+              border: '2px solid rgba(255,255,255,0.6)',
+              color: '#0C081C', transition: 'transform 0.25s ease, box-shadow 0.25s ease',
+            }}>
+              <Play size={20} fill="#0C081C" style={{ marginLeft: 2 }} />
+            </div>
+          </div>
+        </div>
+
+        {/* Text content & bottom bar */}
+        <div style={{
+          padding: '0.85rem 1rem 0.95rem',
+          display: 'flex', flexDirection: 'column', gap: '0.35rem', flex: 1,
+          justifyContent: 'space-between',
+        }}>
+          <div>
+            <h3 style={{
+              fontSize: '1.15rem', fontWeight: 900, color: '#fff', margin: '0 0 0.15rem',
+              fontFamily: 'var(--font-display)',
+              lineHeight: 1.15,
+            }}>
+              {title}
+            </h3>
+            {description && (
+              <p style={{
+                fontSize: '0.78rem', color: 'var(--text-muted, #9CA3AF)', margin: 0,
+                lineHeight: 1.35,
               }}>
-                <Trophy size={12} /> {bestScore.toLocaleString()}
-              </span>
-            )}
-            {multiplayer && (
-              <span style={{
-                display: 'inline-flex', alignItems: 'center', gap: '0.15rem',
-                fontSize: '0.65rem', color: 'rgba(255,255,255,0.7)', fontWeight: 600,
-                padding: '0.15rem 0.5rem', borderRadius: 'var(--radius-full)',
-                background: 'rgba(255,255,255,0.12)',
-              }}>
-                <Swords size={11} /> 1v1
-              </span>
+                {description}
+              </p>
             )}
           </div>
 
-          <motion.div
-            whileHover={{ scale: 1.1 }}
-            style={{
+          {/* Bottom Bar */}
+          <div style={{
+            display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+            marginTop: '0.4rem', paddingTop: '0.5rem',
+            borderTop: '1px solid rgba(255,255,255,0.08)',
+          }}>
+            <div>
+              {bestScore > 0 ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                  <Trophy size={13} style={{ color: '#FFD166' }} />
+                  <span style={{ fontSize: '0.92rem', color: '#FFD166', fontWeight: 900, fontFamily: 'var(--font-mono)' }}>
+                    {bestScore.toLocaleString()}
+                  </span>
+                </div>
+              ) : (
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Ready to play</span>
+              )}
+            </div>
+
+            <span style={{
+              fontSize: '0.75rem', fontWeight: 800, color: '#FFD166',
               display: 'inline-flex', alignItems: 'center', gap: '0.25rem',
-              padding: '0.4rem 0.9rem', borderRadius: 'var(--radius-full)',
-              background: 'rgba(255,255,255,0.2)',
-              border: '1px solid rgba(255,255,255,0.35)',
-              color: '#fff', fontWeight: 800, fontSize: '0.72rem',
-              letterSpacing: 0.5,
-              boxShadow: '0 2px 8px rgba(0,0,0,0.2)',
-            }}
-          >
-            <Play size={11} fill="#fff" /> PLAY
-          </motion.div>
+            }}>
+              PLAY <Play size={10} fill="#FFD166" />
+            </span>
+          </div>
         </div>
       </div>
 
       <style>{`
-        .arcade-cabinet:hover .cabinet-glow { opacity: 1 !important; }
-        .arcade-cabinet:hover > div { border-color: rgba(255,209,102,0.45); box-shadow: 0 16px 40px rgba(0,0,0,0.4), 0 0 30px var(--tile-glow, rgba(255,153,51,0.3)); }
+        .arcade-cabinet:hover .cabinet-img { transform: scale(1.08); }
+        .arcade-cabinet:hover .cabinet-play-disc { transform: scale(1.15); box-shadow: 0 0 30px rgba(255,209,102,0.8) !important; }
+        .arcade-cabinet:hover > div { border-color: rgba(255,209,102,0.5); box-shadow: 0 16px 40px rgba(0,0,0,0.5), 0 0 25px rgba(255,153,51,0.3); }
       `}</style>
     </motion.button>
   )

@@ -98,7 +98,7 @@ export default function GameHub() {
           </p>
         </motion.div>
 
-        {/* 6 Games Grid */}
+        {/* 6 Games Grid - Image-First Visual Arcade Cards */}
         <motion.div
           variants={itemVariants}
           style={{
@@ -117,24 +117,26 @@ export default function GameHub() {
             return (
               <motion.div
                 key={game.id}
-                whileHover={{ scale: 1.025, y: -4 }}
+                whileHover={{ y: -6, scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
                 transition={{ type: 'spring', stiffness: 350, damping: 22 }}
+                onClick={() => navigate(`/game/${game.id}/mode`)}
+                className="arcade-game-card"
                 style={{
-                  background: 'rgba(15, 12, 34, 0.85)',
+                  background: 'rgba(16, 12, 34, 0.92)',
                   border: '1px solid rgba(255, 255, 255, 0.12)',
-                  borderRadius: 'var(--radius-xl, 18px)',
-                  padding: '1.25rem',
+                  borderRadius: 'var(--radius-xl, 20px)',
                   display: 'flex',
                   flexDirection: 'column',
-                  justifyContent: 'space-between',
-                  boxShadow: '0 8px 24px rgba(0, 0, 0, 0.35)',
-                  backdropFilter: 'blur(12px)',
-                  WebkitBackdropFilter: 'blur(12px)',
+                  boxShadow: '0 12px 32px rgba(0, 0, 0, 0.45)',
+                  backdropFilter: 'blur(16px)',
+                  WebkitBackdropFilter: 'blur(16px)',
                   position: 'relative',
                   overflow: 'hidden',
+                  cursor: 'pointer',
                 }}
               >
-                {/* Subtle top accent gradient */}
+                {/* Top Accent Line */}
                 <div
                   style={{
                     position: 'absolute',
@@ -143,139 +145,262 @@ export default function GameHub() {
                     right: 0,
                     height: 3,
                     background: game.gradient,
+                    zIndex: 4,
                   }}
                 />
 
-                {/* Game Art & Title Block */}
-                <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', marginBottom: '0.85rem' }}>
+                {/* Big Featured Game Image with Overlay Badges & Play Button */}
+                <div
+                  className="game-art-container"
+                  style={{
+                    position: 'relative',
+                    width: '100%',
+                    height: 'clamp(170px, 36vw, 210px)',
+                    overflow: 'hidden',
+                    background: 'rgba(0, 0, 0, 0.5)',
+                  }}
+                >
+                  {/* Game Art */}
+                  {game.image ? (
+                    <img
+                      src={game.image}
+                      alt={game.name}
+                      className="game-art-img"
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        objectPosition: 'center',
+                        display: 'block',
+                        transition: 'transform 0.45s ease',
+                      }}
+                    />
+                  ) : (
                     <div
                       style={{
-                        width: 58,
-                        height: 58,
-                        borderRadius: 'var(--radius-lg, 14px)',
-                        overflow: 'hidden',
-                        flexShrink: 0,
-                        border: '1px solid rgba(255, 255, 255, 0.15)',
-                        boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
-                        background: game.gradient,
+                        width: '100%',
+                        height: '100%',
                         display: 'flex',
                         alignItems: 'center',
                         justifyContent: 'center',
+                        fontSize: '4.5rem',
+                        background: game.gradient,
                       }}
                     >
-                      {game.image ? (
-                        <img
-                          src={game.image}
-                          alt={game.name}
-                          style={{ width: '100%', height: '100%', objectFit: 'cover' }}
-                        />
-                      ) : (
-                        <span style={{ fontSize: '1.8rem' }}>{game.icon}</span>
-                      )}
+                      {game.icon}
                     </div>
+                  )}
 
-                    <div style={{ minWidth: 0, flex: 1 }}>
+                  {/* Cinematic Dark Vignette */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      background: 'linear-gradient(180deg, rgba(0, 0, 0, 0.45) 0%, rgba(0, 0, 0, 0.08) 40%, rgba(16, 12, 34, 0.95) 100%)',
+                      pointerEvents: 'none',
+                      zIndex: 1,
+                    }}
+                  />
+
+                  {/* Top-Left: Unlocked Tier Badge */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 12,
+                      left: 12,
+                      zIndex: 3,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      padding: '0.25rem 0.65rem',
+                      borderRadius: '9999px',
+                      background: 'rgba(0, 0, 0, 0.72)',
+                      backdropFilter: 'blur(8px)',
+                      WebkitBackdropFilter: 'blur(8px)',
+                      border: `1px solid ${highestTier.color}88`,
+                      color: highestTier.color,
+                      fontSize: '0.72rem',
+                      fontWeight: 800,
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.04em',
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.4)',
+                    }}
+                  >
+                    <TierIcon size={12} />
+                    <span>Unlocked: {highestTier.name}</span>
+                  </div>
+
+                  {/* Top-Right: Game Mode Tag (Multiplayer / Solo) */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      top: 12,
+                      right: 12,
+                      zIndex: 3,
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.3rem',
+                      padding: '0.25rem 0.6rem',
+                      borderRadius: '9999px',
+                      background: 'rgba(0, 0, 0, 0.72)',
+                      backdropFilter: 'blur(8px)',
+                      WebkitBackdropFilter: 'blur(8px)',
+                      border: '1px solid rgba(255, 255, 255, 0.2)',
+                      color: '#FFF',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                      boxShadow: '0 2px 8px rgba(0, 0, 0, 0.4)',
+                    }}
+                  >
+                    <span>{game.icon}</span>
+                    <span>{game.multiplayerSupported ? '1v1 & Solo' : 'Solo'}</span>
+                  </div>
+
+                  {/* Center Overlay: Glowing Arcade Play Button */}
+                  <div
+                    style={{
+                      position: 'absolute',
+                      inset: 0,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      zIndex: 2,
+                      pointerEvents: 'none',
+                    }}
+                  >
+                    <div
+                      className="overlay-play-disc"
+                      style={{
+                        width: 'clamp(52px, 12vw, 62px)',
+                        height: 'clamp(52px, 12vw, 62px)',
+                        borderRadius: 'var(--radius-full)',
+                        background: 'linear-gradient(135deg, var(--festival-saffron, #FF8C42), var(--festival-gold, #FFD166))',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        boxShadow: '0 0 25px rgba(255, 140, 66, 0.65), 0 4px 16px rgba(0, 0, 0, 0.6)',
+                        border: '2px solid rgba(255, 255, 255, 0.7)',
+                        color: '#0C081C',
+                        transition: 'transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.3s ease',
+                      }}
+                    >
+                      <Play size={24} fill="#0C081C" style={{ marginLeft: 3 }} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card Info Body */}
+                <div
+                  style={{
+                    padding: '1rem 1.15rem 1.15rem',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '0.4rem',
+                    flex: 1,
+                    justifyContent: 'space-between',
+                  }}
+                >
+                  <div>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.2rem' }}>
                       <h2
                         style={{
-                          margin: '0 0 0.2rem',
-                          fontSize: '1.18rem',
-                          fontWeight: 800,
+                          margin: 0,
+                          fontSize: '1.25rem',
+                          fontWeight: 900,
                           color: '#FFF',
                           fontFamily: 'var(--font-display, inherit)',
-                          whiteSpace: 'nowrap',
-                          overflow: 'hidden',
-                          textOverflow: 'ellipsis',
+                          letterSpacing: '0.01em',
                         }}
                       >
                         {game.name}
                       </h2>
-                      <div
+                      <span
                         style={{
-                          fontSize: '0.74rem',
-                          color: highestTier.color,
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.35rem',
+                          fontSize: '0.7rem',
                           fontWeight: 700,
+                          color: 'var(--text-muted, #9CA3AF)',
                           textTransform: 'uppercase',
+                          letterSpacing: '0.05em',
                         }}
                       >
-                        <TierIcon size={13} />
-                        <span>Unlocked: {highestTier.name}</span>
-                      </div>
+                        {game.duration ? `${game.duration}s Blitz` : 'Endless'}
+                      </span>
                     </div>
+
+                    <p
+                      style={{
+                        fontSize: '0.84rem',
+                        color: 'var(--text-muted, #9CA3AF)',
+                        margin: '0 0 0.75rem',
+                        lineHeight: 1.4,
+                      }}
+                    >
+                      {game.description}
+                    </p>
                   </div>
 
-                  {/* One-line Description */}
-                  <p
+                  {/* Footer Row: Personal Best & Play Button */}
+                  <div
                     style={{
-                      fontSize: '0.84rem',
-                      color: 'var(--text-muted, #9CA3AF)',
-                      margin: '0 0 1rem',
-                      lineHeight: 1.45,
-                      minHeight: '2.5em',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'space-between',
+                      paddingTop: '0.75rem',
+                      borderTop: '1px solid rgba(255, 255, 255, 0.08)',
+                      gap: '0.75rem',
                     }}
                   >
-                    {game.description}
-                  </p>
-                </div>
+                    <div>
+                      <div
+                        style={{
+                          fontSize: '0.62rem',
+                          color: 'var(--text-muted, #9CA3AF)',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.05em',
+                          fontWeight: 700,
+                        }}
+                      >
+                        Personal Best
+                      </div>
+                      <div
+                        style={{
+                          fontSize: '1.25rem',
+                          fontWeight: 900,
+                          fontFamily: 'var(--font-mono, monospace)',
+                          color: best > 0 ? '#FFD166' : 'var(--text-muted)',
+                          lineHeight: 1.2,
+                        }}
+                      >
+                        {best > 0 ? best.toLocaleString() : '---'}
+                      </div>
+                    </div>
 
-                {/* Footer: Personal Best + Play Button */}
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'space-between',
-                    paddingTop: '0.85rem',
-                    borderTop: '1px solid rgba(255, 255, 255, 0.08)',
-                    gap: '0.75rem',
-                  }}
-                >
-                  <div>
-                    <div
+                    <motion.button
+                      whileHover={{ scale: 1.06 }}
+                      whileTap={{ scale: 0.94 }}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        navigate(`/game/${game.id}/mode`)
+                      }}
                       style={{
-                        fontSize: '0.65rem',
-                        color: 'var(--text-muted, #9CA3AF)',
-                        textTransform: 'uppercase',
+                        padding: '0.55rem 1.15rem',
+                        borderRadius: 'var(--radius-full)',
+                        border: 'none',
+                        background: 'linear-gradient(135deg, var(--festival-saffron, #FF8C42), var(--festival-gold, #FFD166))',
+                        color: '#0C081C',
+                        fontSize: '0.85rem',
+                        fontWeight: 900,
+                        cursor: 'pointer',
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: '0.4rem',
+                        boxShadow: '0 4px 14px rgba(255, 140, 66, 0.35)',
                         letterSpacing: '0.04em',
                       }}
                     >
-                      Personal Best
-                    </div>
-                    <div
-                      style={{
-                        fontSize: '1.15rem',
-                        fontWeight: 900,
-                        fontFamily: 'var(--font-mono, monospace)',
-                        color: best > 0 ? '#FFD166' : 'var(--text-muted)',
-                      }}
-                    >
-                      {best > 0 ? best.toLocaleString() : '---'}
-                    </div>
+                      <Play size={14} fill="#0C081C" /> PLAY
+                    </motion.button>
                   </div>
-
-                  <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    onClick={() => navigate(`/game/${game.id}/mode`)}
-                    style={{
-                      padding: '0.65rem 1.25rem',
-                      borderRadius: 'var(--radius-lg, 12px)',
-                      border: 'none',
-                      background: 'linear-gradient(135deg, var(--festival-saffron, #FF8C42), var(--festival-gold, #FFD166))',
-                      color: '#0C081C',
-                      fontSize: '0.88rem',
-                      fontWeight: 800,
-                      cursor: 'pointer',
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      gap: '0.45rem',
-                      boxShadow: '0 4px 14px rgba(255, 140, 66, 0.35)',
-                    }}
-                  >
-                    <Play size={16} fill="#0C081C" /> PLAY
-                  </motion.button>
                 </div>
               </motion.div>
             )

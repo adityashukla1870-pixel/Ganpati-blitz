@@ -1680,3 +1680,28 @@ p {
   }
 }
 
+/* ============================================
+   Image-First Arcade Game Cards
+   ============================================ */
+
+.arcade-game-card {
+  transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+              border-color 0.3s ease;
+}
+
+.arcade-game-card:hover {
+  border-color: rgba(255, 209, 102, 0.5) !important;
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.65), 0 0 30px rgba(255, 140, 66, 0.3) !important;
+}
+
+.arcade-game-card:hover .game-art-img {
+  transform: scale(1.08);
+}
+
+.arcade-game-card:hover .overlay-play-disc {
+  transform: scale(1.15);
+  box-shadow: 0 0 35px rgba(255, 209, 102, 0.85), 0 6px 20px rgba(0, 0, 0, 0.6) !important;
+}
+
+
