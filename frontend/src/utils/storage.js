@@ -12,6 +12,23 @@ export const setPlayer = (player) => {
 
 export const clearPlayer = () => {
   localStorage.removeItem(PLAYER_KEY)
+  localStorage.removeItem('ganpati_universal_points')
+}
+
+export const getUniversalPoints = () => {
+  const p = getPlayer()
+  const localUP = parseInt(localStorage.getItem('ganpati_universal_points') || '0', 10)
+  return Number(p?.universal_points ?? localUP ?? 0)
+}
+
+export const setUniversalPoints = (points) => {
+  const num = Number(points || 0)
+  localStorage.setItem('ganpati_universal_points', String(num))
+  const p = getPlayer()
+  if (p) {
+    p.universal_points = num
+    setPlayer(p)
+  }
 }
 
 export const getBestScore = (gameId = 'modak-rush') => {

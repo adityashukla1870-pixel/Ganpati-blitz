@@ -142,6 +142,42 @@ export default function ProfilePage() {
     )
   }
 
+  if (!playerId) {
+    return (
+      <div style={{
+        minHeight: 'calc(100vh - 88px)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '2rem 1rem',
+      }}>
+        <div className="card" style={{ maxWidth: 460, width: '100%', textAlign: 'center', padding: '2.5rem 1.5rem' }}>
+          <div style={{ fontSize: '3rem', marginBottom: '0.75rem' }}>🪔</div>
+          <h2 style={{ margin: '0 0 0.5rem', fontSize: '1.5rem', fontWeight: 800 }}>Guest Profile</h2>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginBottom: '1.5rem' }}>
+            You are currently playing as Guest. Create a player profile or log in to track your scores, climb the universal leaderboard, and unlock festival achievements!
+          </p>
+          <button
+            onClick={() => navigate('/player')}
+            style={{
+              padding: '0.85rem 1.75rem',
+              borderRadius: 'var(--radius-full)',
+              background: 'linear-gradient(135deg, #FF6B35, #FFD166)',
+              border: 'none',
+              color: '#1a0800',
+              fontWeight: 800,
+              fontSize: '1rem',
+              cursor: 'pointer',
+              boxShadow: '0 4px 15px rgba(255,107,53,0.3)',
+            }}
+          >
+            Log In / Create Account
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div style={{
       minHeight: '100vh',
@@ -625,6 +661,26 @@ export default function ProfilePage() {
               })}
             </div>
           )}
+        </motion.div>
+
+        {/* Account Switch Action */}
+        <motion.div variants={itemAnim} style={{ textAlign: 'center', marginTop: 10 }}>
+          <button
+            onClick={() => navigate('/player')}
+            style={{
+              padding: '0.65rem 1.5rem',
+              borderRadius: 'var(--radius-full)',
+              background: 'rgba(255,255,255,0.06)',
+              border: '1px solid rgba(255,255,255,0.15)',
+              color: 'var(--text-muted)',
+              fontSize: '0.85rem',
+              fontWeight: 600,
+              cursor: 'pointer',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            Switch Account / Log In to Another Profile
+          </button>
         </motion.div>
       </motion.div>
     </div>

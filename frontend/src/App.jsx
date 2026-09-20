@@ -86,32 +86,31 @@ export default function App() {
   })
 
   useEffect(() => {
-    let saved = localStorage.getItem('ganpati_player')
-    if (!saved) {
-      const defaultPlayer = {
-        player_id: 'b308814e-cc17-4341-b03f-6840b687eb00',
-        display_name: 'Aditya Shukla',
-        name: 'Aditya Shukla',
-        campus: 'NIAT Jaipur',
-        avatar: '🪷',
-        level: 3,
-        xp: 180,
-        xpNext: 300,
-        universal_points: 284,
+    const saved = localStorage.getItem('ganpati_player')
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        setPlayer(parsed)
+        if (parsed.universal_points !== undefined) {
+          localStorage.setItem('ganpati_universal_points', String(parsed.universal_points))
+        }
+      } catch (_) {
+        localStorage.removeItem('ganpati_player')
       }
-      localStorage.setItem('ganpati_player', JSON.stringify(defaultPlayer))
-      saved = JSON.stringify(defaultPlayer)
     }
-    if (saved) setPlayer(JSON.parse(saved))
   }, [])
 
   const handlePlayerSetup = (playerData) => {
     localStorage.setItem('ganpati_player', JSON.stringify(playerData))
+    if (playerData.universal_points !== undefined) {
+      localStorage.setItem('ganpati_universal_points', String(playerData.universal_points))
+    }
     setPlayer(playerData)
   }
 
   const handleLogout = () => {
     localStorage.removeItem('ganpati_player')
+    localStorage.removeItem('ganpati_universal_points')
     setPlayer(null)
   }
 

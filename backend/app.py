@@ -302,6 +302,40 @@ def health():
     }), 200
 
 
+def serialize_player_profile(db, player_doc, is_existing=False):
+    player_id = player_doc.get("player_id", "")
+    progress = db.player_progress.find_one({"player_id": player_id}) or {}
+    total_xp = progress.get("total_xp", 0)
+    snap = progression_snapshot(total_xp)
+    up = player_doc.get("universal_points", 0)
+    rank = db.players.count_documents({"universal_points": {"$gt": up}, "player_id": {"$not": {"$regex": "^seed"}}}) + 1
+    tier = get_rank_tier(up)
+
+    created_at = player_doc.get("created_at")
+    created_at_str = created_at.isoformat() if isinstance(created_at, datetime) else str(created_at or "")
+
+    return {
+        "player_id": player_id,
+        "id": player_id,
+        "display_name": player_doc.get("display_name", "Player"),
+        "name": player_doc.get("display_name", "Player"),
+        "campus": player_doc.get("campus", "Unknown"),
+        "avatar": player_doc.get("avatar", "🪷"),
+        "universal_points": up,
+        "rating": player_doc.get("rating", 1000),
+        "games_played": player_doc.get("games_played", 0),
+        "wins": player_doc.get("wins", 0),
+        "losses": player_doc.get("losses", 0),
+        "level": snap.get("level", 1),
+        "xp": snap.get("current_level_xp", 0),
+        "xpNext": snap.get("next_level_xp", 100),
+        "tier": tier,
+        "global_rank": rank,
+        "created_at": created_at_str,
+        "is_existing": is_existing,
+    }
+
+
 @app.route("/api/player", methods=["POST"])
 def create_or_get_player():
     data = request.get_json(silent=True)
@@ -310,6 +344,7 @@ def create_or_get_player():
 
     display_name = data.get("display_name", "").strip()
     campus = data.get("campus", "").strip()
+    avatar = data.get("avatar", "🪷").strip() or "🪷"
 
     if not display_name or not campus:
         return jsonify({"error": "display_name and campus are required"}), 400
@@ -322,18 +357,15 @@ def create_or_get_player():
 
     existing = db.players.find_one({"display_name": display_name, "campus": campus})
     if existing:
-        return jsonify({
-            "player_id": existing["player_id"],
-            "display_name": existing["display_name"],
-            "campus": existing["campus"],
-            "created_at": existing["created_at"].isoformat()
-        })
+        return jsonify(serialize_player_profile(db, existing, is_existing=True)), 200
 
     player_id = str(uuid.uuid4())
     player = {
         "player_id": player_id,
         "display_name": display_name,
         "campus": campus,
+        "avatar": avatar,
+        "universal_points": 0,
         "rating": 1000,
         "games_played": 0,
         "wins": 0,
@@ -342,14 +374,44 @@ def create_or_get_player():
     }
 
     db.players.insert_one(player)
+    return jsonify(serialize_player_profile(db, player, is_existing=False)), 201
 
-    return jsonify({
-        "player_id": player_id,
-        "display_name": display_name,
-        "campus": campus,
-        "rating": 1000,
-        "created_at": player["created_at"].isoformat()
-    }), 201
+
+@app.route("/api/player/login", methods=["POST"])
+def login_player():
+    data = request.get_json(silent=True)
+    if not data:
+        return jsonify({"error": "Request body required"}), 400
+
+    display_name = data.get("display_name", "").strip()
+    campus = data.get("campus", "").strip()
+
+    if not display_name:
+        return jsonify({"error": "display_name is required"}), 400
+
+    db, err = get_db()
+    if err:
+        return jsonify({"error": err}), 503
+
+    query = {
+        "display_name": {"$regex": f"^{re.escape(display_name)}$", "$options": "i"},
+        "player_id": {"$not": {"$regex": "^seed"}},
+    }
+    if campus and campus not in ("All Campuses", "Other", ""):
+        query["campus"] = {"$regex": f"^{re.escape(campus)}$", "$options": "i"}
+
+    existing = db.players.find_one(query)
+    if not existing and campus and campus not in ("All Campuses", "Other", ""):
+        # Fallback: search by display_name regardless of campus
+        existing = db.players.find_one({
+            "display_name": {"$regex": f"^{re.escape(display_name)}$", "$options": "i"},
+            "player_id": {"$not": {"$regex": "^seed"}},
+        })
+
+    if not existing:
+        return jsonify({"error": f"No player account found for '{display_name}'. Please verify your name or switch to Register."}), 404
+
+    return jsonify(serialize_player_profile(db, existing, is_existing=True)), 200
 
 
 VALID_GAME_IDS = ["modak-rush", "diya-dash", "dhol-battle", "rangoli-rush", "mushak-maze", "ganpati-logic", "blitz-mix"]
@@ -757,7 +819,7 @@ def get_global_leaderboard():
     if err:
         return jsonify({"error": err}), 503
 
-    query = {}
+    query = {"player_id": {"$not": {"$regex": "^seed"}}}
     if campus:
         query["campus"] = campus
 
@@ -800,10 +862,10 @@ def get_global_leaderboard():
         p_doc = db.players.find_one({"player_id": player_id})
         if p_doc:
             p_up = p_doc.get("universal_points", 0)
-            p_rank = db.players.count_documents({"universal_points": {"$gt": p_up}}) + 1
+            p_rank = db.players.count_documents({"universal_points": {"$gt": p_up}, "player_id": {"$not": {"$regex": "^seed"}}}) + 1
             p_campus_rank = None
             if campus:
-                p_campus_rank = db.players.count_documents({"campus": campus, "universal_points": {"$gt": p_up}}) + 1
+                p_campus_rank = db.players.count_documents({"campus": campus, "universal_points": {"$gt": p_up}, "player_id": {"$not": {"$regex": "^seed"}}}) + 1
             player_card = {
                 "player_id": player_id,
                 "display_name": p_doc.get("display_name", "Player"),

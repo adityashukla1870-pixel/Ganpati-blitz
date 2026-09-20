@@ -14,6 +14,8 @@ import {
   Volume2,
   VolumeX,
   Swords,
+  UserPlus,
+  LogIn,
 } from 'lucide-react'
 import { LogoIcon } from './Logo'
 import { getRankTier } from '../config/universalPoints'
@@ -141,8 +143,8 @@ export default function TopNav({ player, soundEnabled, onSoundToggle }) {
           </Link>
 
           {/* XP & Level Badge */}
-          {player && (
-            <div style={styles.levelBadge} title={`Level ${player.level} (${player.xp || 0}/${player.xpNext || 100} XP)`}>
+          {player ? (
+            <div style={styles.levelBadge} title={`Level ${player.level || 1} (${player.xp || 0}/${player.xpNext || 100} XP)`}>
               <span style={styles.levelText}>Lv.{player.level || 1}</span>
               <div style={styles.xpBarBg}>
                 <div
@@ -153,6 +155,28 @@ export default function TopNav({ player, soundEnabled, onSoundToggle }) {
                 />
               </div>
             </div>
+          ) : (
+            <Link
+              to="/player"
+              title="Create Account or Log In"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.4rem',
+                padding: '0.42rem 0.85rem',
+                borderRadius: 'var(--radius-full)',
+                background: 'linear-gradient(135deg, #FF6B35 0%, #FFD166 100%)',
+                color: '#1a0800',
+                fontWeight: 800,
+                fontSize: '0.8rem',
+                letterSpacing: '0.02em',
+                textDecoration: 'none',
+                boxShadow: '0 2px 10px rgba(255, 107, 53, 0.3)',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              <UserPlus size={14} /> Log In / Register
+            </Link>
           )}
 
           {/* Sound Toggle */}
@@ -223,47 +247,79 @@ export default function TopNav({ player, soundEnabled, onSoundToggle }) {
             style={styles.mobileMenu}
           >
             {/* Player quick info in mobile drawer */}
-            <div style={styles.mobilePlayerCard}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                <span style={{ fontSize: '1.4rem' }}>{player?.avatar || '🪷'}</span>
-                <div>
-                  <div style={{ fontWeight: 800, fontSize: '0.92rem', color: '#FFF' }}>
-                    {player?.display_name || player?.name || 'Player'}
-                  </div>
-                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                    {player?.campus || 'Campus Blitzer'}
+            {player ? (
+              <div style={styles.mobilePlayerCard}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  <span style={{ fontSize: '1.4rem' }}>{player.avatar || '🪷'}</span>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: '0.92rem', color: '#FFF' }}>
+                      {player.display_name || player.name || 'Player'}
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                      {player.campus || 'Campus Blitzer'}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                <div
-                  style={{
-                    padding: '0.2rem 0.6rem',
-                    borderRadius: 'var(--radius-full)',
-                    background: tier.bg,
-                    border: `1px solid ${tier.border}`,
-                    color: tier.color,
-                    fontSize: '0.72rem',
-                    fontWeight: 800,
-                  }}
-                >
-                  {currentUP.toLocaleString()} UP
-                </div>
-                <div
-                  style={{
-                    padding: '0.2rem 0.5rem',
-                    borderRadius: 'var(--radius-full)',
-                    background: 'rgba(255,255,255,0.06)',
-                    color: 'var(--text-muted)',
-                    fontSize: '0.72rem',
-                    fontWeight: 700,
-                  }}
-                >
-                  Lv.{player?.level || 1}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div
+                    style={{
+                      padding: '0.2rem 0.6rem',
+                      borderRadius: 'var(--radius-full)',
+                      background: tier.bg,
+                      border: `1px solid ${tier.border}`,
+                      color: tier.color,
+                      fontSize: '0.72rem',
+                      fontWeight: 800,
+                    }}
+                  >
+                    {currentUP.toLocaleString()} UP
+                  </div>
+                  <div
+                    style={{
+                      padding: '0.2rem 0.5rem',
+                      borderRadius: 'var(--radius-full)',
+                      background: 'rgba(255,255,255,0.06)',
+                      color: 'var(--text-muted)',
+                      fontSize: '0.72rem',
+                      fontWeight: 700,
+                    }}
+                  >
+                    Lv.{player.level || 1}
+                  </div>
                 </div>
               </div>
-            </div>
+            ) : (
+              <div style={styles.mobilePlayerCard}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
+                  <span style={{ fontSize: '1.4rem' }}>🪔</span>
+                  <div>
+                    <div style={{ fontWeight: 800, fontSize: '0.92rem', color: '#FFF' }}>
+                      Guest Blitzer
+                    </div>
+                    <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                      Log in to save rankings
+                    </div>
+                  </div>
+                </div>
+
+                <Link
+                  to="/player"
+                  style={{
+                    padding: '0.35rem 0.75rem',
+                    borderRadius: 'var(--radius-full)',
+                    background: 'linear-gradient(135deg, #FF6B35, #FFD166)',
+                    color: '#1a0800',
+                    fontSize: '0.78rem',
+                    fontWeight: 800,
+                    textDecoration: 'none',
+                    whiteSpace: 'nowrap',
+                  }}
+                >
+                  Log In / Join
+                </Link>
+              </div>
+            )}
 
             {/* Mobile Nav Links */}
             <div style={styles.mobileLinksList}>
@@ -332,6 +388,19 @@ export default function TopNav({ player, soundEnabled, onSoundToggle }) {
                   }}
                 >
                   <SettingsIcon size={15} /> Settings
+                </Link>
+
+                <Link
+                  to="/player"
+                  style={{
+                    ...styles.mobileSubLink,
+                    gridColumn: 'span 2',
+                    color: '#FFD700',
+                    background: 'rgba(255,215,0,0.06)',
+                    borderColor: 'rgba(255,215,0,0.2)',
+                  }}
+                >
+                  <User size={15} /> {player ? 'Switch Account / Profile' : 'Log In or Register'}
                 </Link>
               </div>
             </div>

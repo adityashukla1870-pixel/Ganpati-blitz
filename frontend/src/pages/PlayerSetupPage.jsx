@@ -5,10 +5,13 @@ import PlayerSetup from '../components/PlayerSetup'
 
 export default function PlayerSetupPage({ onSetup }) {
   const navigate = useNavigate()
+  const searchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')
+  const defaultMode = searchParams.get('mode') === 'login' ? 'login' : 'create'
+  const redirectTarget = searchParams.get('redirect') || '/games'
 
   const handleSetup = (playerData) => {
     onSetup?.(playerData)
-    navigate('/')
+    navigate(redirectTarget)
   }
 
   return (

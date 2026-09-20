@@ -35,40 +35,6 @@ const itemVariants = {
   visible: { opacity: 1, y: 0, transition: { duration: 0.45, ease: 'easeOut' } },
 }
 
-const SEED_CHAMPIONS = [
-  { rank: 1, player_id: 'seed-1', display_name: 'Aarav Sharma', campus: 'NIAT Jaipur', avatar: '🐘', universal_points: 1250, rating: 1320, games_played: 28, wins: 22 },
-  { rank: 2, player_id: 'seed-2', display_name: 'Ananya Verma', campus: 'NIAT Pune', avatar: '🪔', universal_points: 980, rating: 1240, games_played: 22, wins: 17 },
-  { rank: 3, player_id: 'seed-3', display_name: 'Rohan Deshmukh', campus: 'NIAT Mumbai', avatar: '🥁', universal_points: 840, rating: 1190, games_played: 19, wins: 14 },
-  { rank: 4, player_id: 'seed-4', display_name: 'Priya Nair', campus: 'NIAT Bangalore', avatar: '🎨', universal_points: 720, rating: 1150, games_played: 16, wins: 11 },
-  { rank: 5, player_id: 'seed-5', display_name: 'Devansh Kulkarni', campus: 'NIAT Delhi', avatar: '🐭', universal_points: 610, rating: 1110, games_played: 14, wins: 9 },
-  { rank: 6, player_id: 'seed-6', display_name: 'Sneha Patel', campus: 'NIAT Hyderabad', avatar: '✨', universal_points: 530, rating: 1080, games_played: 12, wins: 8 },
-  { rank: 7, player_id: 'seed-7', display_name: 'Kabir Mehta', campus: 'NIAT Chennai', avatar: '🍬', universal_points: 440, rating: 1050, games_played: 10, wins: 6 },
-]
-
-function getSeededEntries(campusFilter, player, localUP) {
-  let list = SEED_CHAMPIONS.map((e) => ({ ...e }))
-  if (player?.player_id) {
-    list.push({
-      player_id: player.player_id,
-      display_name: player.display_name || player.name || 'You',
-      campus: player.campus || 'NIAT Jaipur',
-      avatar: player.avatar || '🪷',
-      universal_points: localUP,
-      rating: player.rating || 1000,
-      games_played: player.games_played || 1,
-      wins: player.wins || 0,
-    })
-  }
-  if (campusFilter && campusFilter !== 'All Campuses') {
-    const filtered = list.filter((e) => e.campus === campusFilter)
-    if (filtered.length >= 3) {
-      list = filtered
-    }
-  }
-  list.sort((a, b) => (b.universal_points || 0) - (a.universal_points || 0))
-  return list.map((e, idx) => ({ ...e, rank: idx + 1 }))
-}
-
 export default function Leaderboard() {
   const [entries, setEntries] = useState([])
   const [playerCard, setPlayerCard] = useState(null)
@@ -82,61 +48,117 @@ export default function Leaderboard() {
   })
   const currentPlayer = getPlayer()
   const playerId = currentPlayer?.player_id || currentPlayer?.id
+  const currentUP = Number(
+    currentPlayer?.universal_points ??
+    localStorage.getItem('ganpati_universal_points') ??
+    0
+  )
 
   const fetchLeaderboard = async () => {
     setLoading(true)
     setError(null)
+
+    // Ensure local UP cache is aligned
+    if (currentUP > 0 && !localStorage.getItem('ganpati_universal_points')) {
+      localStorage.setItem('ganpati_universal_points', String(currentUP))
+    }
+
     try {
       const data = await getGlobalLeaderboard(campus, 50, 1, playerId)
-      const list = data.leaderboard || []
+      const rawList = data.leaderboard || []
+      // Filter out any fake seed bots from display
+      const list = rawList.filter((e) => !e.player_id?.startsWith('seed-'))
       setEntries(list)
       setIsOfflineFallback(false)
+
       if (list.length > 0) {
-        localStorage.setItem(`ganpati_cached_leaderboard_${campus}`, JSON.stringify(data))
+        localStorage.setItem(`ganpati_real_leaderboard_v2_${campus}`, JSON.stringify({ ...data, leaderboard: list }))
       }
+
       if (data.player_card) {
         setPlayerCard(data.player_card)
+        // Sync local storage with server authoritative points
+        if (data.player_card.universal_points !== undefined && currentPlayer) {
+          currentPlayer.universal_points = data.player_card.universal_points
+          localStorage.setItem('ganpati_player', JSON.stringify(currentPlayer))
+          localStorage.setItem('ganpati_universal_points', String(data.player_card.universal_points))
+        }
       } else if (currentPlayer) {
-        const localUP = parseInt(localStorage.getItem('ganpati_universal_points') || '0', 10)
+        const inList = list.find((e) => e.player_id === playerId)
+        const effectiveUP = inList ? inList.universal_points : currentUP
+        const effectiveRank = inList ? inList.rank : (list.length === 0 ? 1 : '-')
         setPlayerCard({
           player_id: playerId,
           display_name: currentPlayer.display_name || currentPlayer.name || 'Player',
           campus: currentPlayer.campus || 'Unknown',
           avatar: currentPlayer.avatar || '🪷',
-          universal_points: localUP,
-          global_rank: '-',
-          tier: getRankTier(localUP),
+          universal_points: effectiveUP,
+          global_rank: effectiveRank,
+          tier: getRankTier(effectiveUP),
         })
+      } else {
+        setPlayerCard(null)
       }
     } catch (err) {
       // Try local cache first
-      const cached = localStorage.getItem(`ganpati_cached_leaderboard_${campus}`)
-      const localUP = parseInt(localStorage.getItem('ganpati_universal_points') || '0', 10)
+      const cached = localStorage.getItem(`ganpati_real_leaderboard_v2_${campus}`)
       if (cached) {
         try {
           const parsed = JSON.parse(cached)
-          setEntries(parsed.leaderboard || [])
-          if (parsed.player_card) setPlayerCard(parsed.player_card)
-          setIsOfflineFallback(true)
-          setError(null)
-          return
+          const validList = (parsed.leaderboard || []).filter((e) => !e.player_id?.startsWith('seed-'))
+          if (validList.length > 0) {
+            setEntries(validList)
+            if (parsed.player_card) {
+              setPlayerCard(parsed.player_card)
+            } else if (currentPlayer) {
+              setPlayerCard({
+                player_id: playerId,
+                display_name: currentPlayer.display_name || currentPlayer.name || 'Player',
+                campus: currentPlayer.campus || 'Unknown',
+                avatar: currentPlayer.avatar || '🪷',
+                universal_points: currentUP,
+                global_rank: 1,
+                tier: getRankTier(currentUP),
+              })
+            }
+            setIsOfflineFallback(true)
+            setError(null)
+            return
+          }
         } catch (_) {}
       }
 
-      // Seed inaugural festival champions so leaderboard is never broken
-      const seedList = getSeededEntries(campus, currentPlayer, localUP)
-      setEntries(seedList)
+      // No fake bots: show only real player if logged in, or empty
+      if (currentPlayer) {
+        const fallbackList = [
+          {
+            rank: 1,
+            player_id: playerId,
+            display_name: currentPlayer.display_name || currentPlayer.name || 'Player',
+            campus: currentPlayer.campus || 'Unknown',
+            avatar: currentPlayer.avatar || '🪷',
+            universal_points: currentUP,
+            tier: getRankTier(currentUP),
+            rating: currentPlayer.rating || 1000,
+            games_played: currentPlayer.games_played || 1,
+            wins: currentPlayer.wins || 0,
+          },
+        ]
+        setEntries(fallbackList)
+        setPlayerCard({
+          player_id: playerId,
+          display_name: currentPlayer.display_name || currentPlayer.name || 'Player',
+          campus: currentPlayer.campus || 'Unknown',
+          avatar: currentPlayer.avatar || '🪷',
+          universal_points: currentUP,
+          global_rank: 1,
+          tier: getRankTier(currentUP),
+        })
+      } else {
+        setEntries([])
+        setPlayerCard(null)
+      }
       setIsOfflineFallback(true)
-      const playerRank = seedList.findIndex((e) => e.player_id === playerId) + 1
-      setPlayerCard({
-        player_id: playerId,
-        display_name: currentPlayer?.display_name || currentPlayer?.name || 'Player',
-        campus: currentPlayer?.campus || 'Unknown',
-        avatar: currentPlayer?.avatar || '🪷',
-        universal_points: localUP,
-        global_rank: playerRank > 0 ? `#${playerRank}` : '-',
-        tier: getRankTier(localUP),
-      })
     } finally {
       setLoading(false)
     }
@@ -224,8 +246,8 @@ export default function Leaderboard() {
           </p>
         </motion.div>
 
-        {/* Podium for Top 3 */}
-        {entries.length >= 3 && (
+        {/* Podium for Top 3 OR Spotlight if 1-2 contenders */}
+        {entries.length >= 3 ? (
           <motion.div
             variants={itemVariants}
             style={{
@@ -310,7 +332,35 @@ export default function Leaderboard() {
               </div>
             </div>
           </motion.div>
-        )}
+        ) : entries.length >= 1 ? (
+          <motion.div
+            variants={itemVariants}
+            style={{
+              padding: '1.25rem 1rem',
+              textAlign: 'center',
+              background: 'linear-gradient(180deg, rgba(255, 215, 0, 0.15) 0%, rgba(20, 15, 40, 0.6) 100%)',
+              border: '2px solid rgba(255, 215, 0, 0.5)',
+              borderRadius: 'var(--radius-xl)',
+              boxShadow: '0 0 25px rgba(255, 215, 0, 0.2)',
+              maxWidth: 420,
+              margin: '0 auto',
+            }}
+          >
+            <div style={{ fontSize: '2.2rem', marginBottom: '0.2rem', filter: 'drop-shadow(0 0 10px rgba(255,215,0,0.5))' }}>👑</div>
+            <div style={{ fontSize: '0.72rem', fontWeight: 900, color: '#FFD700', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+              Current #1 Champion
+            </div>
+            <div style={{ fontSize: '1.35rem', fontWeight: 900, color: '#FFF', margin: '0.25rem 0' }}>
+              {entries[0].display_name}
+            </div>
+            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
+              {entries[0].campus}
+            </div>
+            <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#FFD700', fontFamily: 'var(--font-mono)' }}>
+              {(entries[0].universal_points || 0).toLocaleString()} <span style={{ fontSize: '0.75rem' }}>UP</span>
+            </div>
+          </motion.div>
+        ) : null}
 
         {/* Current Player Standing Card */}
         {playerCard && (
@@ -392,6 +442,45 @@ export default function Leaderboard() {
                 </div>
               </div>
             </div>
+          </motion.div>
+        )}
+
+        {/* Guest CTA if no player logged in */}
+        {!currentPlayer && (
+          <motion.div
+            variants={itemVariants}
+            style={{
+              padding: '1rem 1.25rem',
+              background: 'rgba(255, 215, 0, 0.08)',
+              border: '1px solid rgba(255, 215, 0, 0.3)',
+              borderRadius: 'var(--radius-lg)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              flexWrap: 'wrap',
+              gap: '1rem',
+            }}
+          >
+            <div>
+              <div style={{ fontWeight: 800, color: '#FFD700', fontSize: '0.95rem' }}>Want to see your ranking here?</div>
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.2rem' }}>
+                Log in or create a player profile to earn Universal Points and claim your place on the board.
+              </div>
+            </div>
+            <Link
+              to="/player"
+              style={{
+                padding: '0.5rem 1.1rem',
+                borderRadius: 'var(--radius-full)',
+                background: 'linear-gradient(135deg, #FF6B35, #FFD166)',
+                color: '#1a0800',
+                fontWeight: 800,
+                fontSize: '0.82rem',
+                textDecoration: 'none',
+              }}
+            >
+              Log In / Register
+            </Link>
           </motion.div>
         )}
 
@@ -486,7 +575,7 @@ export default function Leaderboard() {
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
               <Zap size={16} style={{ color: '#F59E0B', flexShrink: 0 }} />
-              <span>Multiplayer backend is waking up / offline. Displaying inaugural festival standings.</span>
+              <span>Multiplayer backend is connecting. Showing local standings.</span>
             </div>
             <button
               onClick={fetchLeaderboard}

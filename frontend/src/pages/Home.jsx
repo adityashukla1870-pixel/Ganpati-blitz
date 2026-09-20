@@ -167,6 +167,50 @@ export default function Home({ player }) {
           Play. Compete. Celebrate.
         </motion.p>
 
+        {/* Guest Welcome Prompt */}
+        {!player && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.35, duration: 0.4 }}
+            style={{
+              width: '100%',
+              maxWidth: 380,
+              padding: '0.65rem 1rem',
+              borderRadius: 'var(--radius-lg, 14px)',
+              background: 'rgba(255, 215, 0, 0.08)',
+              border: '1px solid rgba(255, 215, 0, 0.25)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: '0.75rem',
+              marginBottom: '1rem',
+              boxSizing: 'border-box',
+            }}
+          >
+            <div style={{ textAlign: 'left' }}>
+              <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#FFD700' }}>New to Ganpati Blitz?</div>
+              <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>Create an account or log in</div>
+            </div>
+            <button
+              onClick={() => navigate('/player')}
+              style={{
+                padding: '0.35rem 0.8rem',
+                borderRadius: 'var(--radius-full)',
+                background: 'rgba(255, 215, 0, 0.18)',
+                border: '1px solid #FFD700',
+                color: '#FFD700',
+                fontSize: '0.75rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+                whiteSpace: 'nowrap',
+              }}
+            >
+              Log In / Register
+            </button>
+          </motion.div>
+        )}
+
         {/* PRIMARY CTA: PLAY NOW */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}

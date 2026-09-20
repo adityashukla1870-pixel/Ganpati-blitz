@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { ArrowLeft, Settings as SettingsIcon } from 'lucide-react';
+import { ArrowLeft, Settings as SettingsIcon, User } from 'lucide-react';
+import { getPlayer } from '../utils/storage';
 
 const LS_KEY = 'ganpati_blitz_settings';
 
@@ -67,10 +68,11 @@ const Row = ({ label, children }) => (
   </div>
 );
 
-const Settings = () => {
+const Settings = ({ onLogout }) => {
   const navigate = useNavigate();
   const [settings, setSettings] = useState(loadSettings);
   const [confirmClear, setConfirmClear] = useState(false);
+  const player = getPlayer();
 
   useEffect(() => {
     saveSettings(settings);
@@ -85,13 +87,16 @@ const Settings = () => {
       return;
     }
     localStorage.clear();
+    onLogout?.();
     setConfirmClear(false);
-    navigate('/');
+    navigate('/player');
   };
 
   const logout = () => {
     localStorage.removeItem('ganpati_player');
-    navigate('/');
+    localStorage.removeItem('ganpati_universal_points');
+    onLogout?.();
+    navigate('/player');
   };
 
   return (
@@ -147,15 +152,40 @@ const Settings = () => {
         </Row>
       </Section>
 
-      <Section title="Privacy" index={3}>
+      <Section title="Account & Data" index={3}>
+        {player ? (
+          <div style={{ marginBottom: 16 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
+              <span style={{ fontSize: '1.6rem' }}>{player.avatar || '🪷'}</span>
+              <div>
+                <div style={{ fontWeight: 800, color: '#FFF', fontSize: '1rem' }}>
+                  {player.display_name || player.name}
+                </div>
+                <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                  {player.campus || 'Campus Blitzer'} • {(player.universal_points || 0).toLocaleString()} UP
+                </div>
+              </div>
+            </div>
+            <button style={styles.logoutBtn} onClick={logout}>
+              Switch Account / Log Out
+            </button>
+          </div>
+        ) : (
+          <div style={{ marginBottom: 16 }}>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', margin: '0 0 10px' }}>
+              Currently playing as Guest. Log in to track your scores and rank.
+            </p>
+            <button style={styles.loginBtn} onClick={() => navigate('/player')}>
+              Log In / Create Account
+            </button>
+          </div>
+        )}
+
         <button
           style={confirmClear ? styles.dangerBtnConfirm : styles.dangerBtn}
           onClick={clearAllData}
         >
-          {confirmClear ? 'Tap again to confirm' : 'Clear All Data'}
-        </button>
-        <button style={styles.logoutBtn} onClick={logout}>
-          Logout
+          {confirmClear ? 'Tap again to confirm' : 'Clear All Local Data'}
         </button>
       </Section>
 
@@ -328,6 +358,20 @@ const styles = {
     fontWeight: 600,
     cursor: 'pointer',
     marginTop: 10,
+  },
+  loginBtn: {
+    width: '100%',
+    padding: '12px 0',
+    borderRadius: 'var(--radius-md, 8px)',
+    border: 'none',
+    background: 'linear-gradient(135deg, #FF6B35, #FFD166)',
+    color: '#1a0800',
+    fontFamily: 'var(--font-sans, sans-serif)',
+    fontSize: '0.9rem',
+    fontWeight: 800,
+    cursor: 'pointer',
+    marginTop: 4,
+    marginBottom: 10,
   },
   aboutRow: {
     display: 'flex',
