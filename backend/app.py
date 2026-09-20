@@ -40,27 +40,93 @@ app.config["SECRET_KEY"] = secret_key
 raw_origins = os.getenv("ALLOWED_ORIGINS", "")
 frontend_url = os.getenv("FRONTEND_URL", "")
 
-origins_list = []
+DEFAULT_ORIGINS = [
+    "http://localhost:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:5173",
+    "https://ganpati-blitz.vercel.app",
+]
+
+origins_list = list(DEFAULT_ORIGINS)
 if raw_origins:
-    origins_list.extend([o.strip().rstrip("/") for o in raw_origins.split(",") if o.strip()])
-if frontend_url:
-    origins_list.append(frontend_url.strip().rstrip("/"))
+    if raw_origins.strip() == "*":
+        origins_list = ["*"]
+    else:
+        for o in raw_origins.split(","):
+            val = o.strip().rstrip("/")
+            if val and val not in origins_list:
+                origins_list.append(val)
 
-if not origins_list:
-    origins_list = ["http://localhost:3000", "http://localhost:5173", "http://127.0.0.1:3000", "http://127.0.0.1:5173"]
+if frontend_url and "*" not in origins_list:
+    val = frontend_url.strip().rstrip("/")
+    if val and val not in origins_list:
+        origins_list.append(val)
 
-if "*" in origins_list:
-    socketio_cors = "*"
-    cors_origins = "*"
-else:
-    socketio_cors = origins_list
-    cors_origins = origins_list
 
-CORS(app, resources={r"/*": {"origins": cors_origins}}, supports_credentials=True)
+def is_allowed_origin(origin):
+    if not origin:
+        return False
+    if "*" in origins_list:
+        return True
+    if origin in origins_list:
+        return True
+    if re.match(r"^https?:\/\/(localhost|127\.0\.0\.1)(:\d+)?$", origin):
+        return True
+    if re.match(r"^https:\/\/([a-zA-Z0-9_-]+\.)?vercel\.app$", origin):
+        return True
+    return False
+
+
+cors_target = "*" if "*" in origins_list else origins_list + [r"^https:\/\/.*\.vercel\.app$"]
+CORS(
+    app,
+    resources={r"/*": {"origins": cors_target}},
+    supports_credentials=True,
+    methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
+    allow_headers=["Content-Type", "Authorization", "X-Requested-With", "Accept"],
+)
+
+
+@app.before_request
+def handle_cors_preflight():
+    if request.method == "OPTIONS":
+        response = app.make_default_options_response()
+        origin = request.headers.get("Origin")
+        if origin and (is_allowed_origin(origin) or "*" in origins_list):
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+        elif origin:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+        else:
+            response.headers["Access-Control-Allow-Origin"] = "*"
+        response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+        response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, Accept"
+        response.headers["Access-Control-Max-Age"] = "86400"
+        return response
+
+
+@app.after_request
+def ensure_cors_headers(response):
+    origin = request.headers.get("Origin")
+    if origin and "Access-Control-Allow-Origin" not in response.headers:
+        if is_allowed_origin(origin) or "*" in origins_list:
+            response.headers["Access-Control-Allow-Origin"] = origin
+            response.headers["Access-Control-Allow-Credentials"] = "true"
+            response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+            response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, Accept"
+    return response
+
 
 socketio_async_mode = os.getenv("SOCKETIO_ASYNC_MODE", "threading")
-socketio = SocketIO(app, cors_allowed_origins=socketio_cors, async_mode=socketio_async_mode,
-                    ping_timeout=30, ping_interval=10)
+socketio = SocketIO(
+    app,
+    cors_allowed_origins="*",
+    async_mode=socketio_async_mode,
+    ping_timeout=30,
+    ping_interval=10,
+)
 
 def get_sanitized_mongo_uri():
     raw = os.getenv("MONGO_URI", "").strip()
