@@ -70,7 +70,7 @@ export default function TopNav({ player, soundEnabled, onSoundToggle }) {
             <div style={styles.logoWrapper}>
               <LogoIcon size={26} />
             </div>
-            <span style={styles.brandText}>GANPATI BLITZ</span>
+            <span style={styles.brandText} className="brand-title-text">GANPATI BLITZ</span>
           </Link>
 
           <button
@@ -219,10 +219,25 @@ export default function TopNav({ player, soundEnabled, onSoundToggle }) {
           </Link>
         </div>
 
-        {/* Mobile: Quick Play + Hamburger Button */}
+        {/* Mobile: Quick Leaderboard + Quick Play + Hamburger Button */}
         <div style={styles.mobileRight} className="mobile-only">
-          <Link to="/games" style={styles.mobilePlayBtn}>
-            <Gamepad2 size={15} /> Play
+          <Link
+            to="/leaderboard"
+            style={{
+              ...styles.mobileLeaderboardBtn,
+              ...(isLeaderboardActive ? styles.mobileLeaderboardBtnActive : {}),
+            }}
+            className="topbar-leaderboard-btn"
+            title="Global Universal Leaderboard"
+            aria-label="Leaderboard"
+          >
+            <Trophy size={14} className="trophy-nav-icon" />
+            <span className="mobile-lb-text-full">Leaderboard</span>
+            <span className="mobile-lb-text-short">Ranks</span>
+          </Link>
+
+          <Link to="/games" style={styles.mobilePlayBtn} className="topbar-play-btn">
+            <Gamepad2 size={14} /> <span>Play</span>
           </Link>
 
           <button
@@ -231,7 +246,7 @@ export default function TopNav({ player, soundEnabled, onSoundToggle }) {
             style={styles.hamburgerBtn}
             aria-label="Toggle navigation menu"
           >
-            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            {mobileMenuOpen ? <X size={19} /> : <Menu size={19} />}
           </button>
         </div>
       </div>
@@ -419,6 +434,31 @@ export default function TopNav({ player, soundEnabled, onSoundToggle }) {
           .desktop-right { display: flex !important; }
           .mobile-only { display: none !important; }
         }
+        @media (max-width: 440px) {
+          .mobile-lb-text-full { display: none !important; }
+          .mobile-lb-text-short { display: inline !important; }
+        }
+        @media (min-width: 441px) {
+          .mobile-lb-text-full { display: inline !important; }
+          .mobile-lb-text-short { display: none !important; }
+        }
+        @media (max-width: 360px) {
+          .brand-title-text { font-size: 0.76rem !important; }
+          .topbar-leaderboard-btn { padding: 0.3rem 0.5rem !important; font-size: 0.72rem !important; }
+          .topbar-play-btn { padding: 0.3rem 0.55rem !important; font-size: 0.72rem !important; }
+        }
+        .topbar-leaderboard-btn:hover {
+          transform: translateY(-1px);
+          border-color: rgba(255, 209, 102, 0.7) !important;
+          box-shadow: 0 4px 14px rgba(255, 209, 102, 0.3) !important;
+        }
+        .trophy-nav-icon {
+          animation: trophyGlow 3s ease-in-out infinite;
+        }
+        @keyframes trophyGlow {
+          0%, 100% { filter: drop-shadow(0 0 0px transparent); }
+          50% { filter: drop-shadow(0 0 4px rgba(255, 209, 102, 0.8)); }
+        }
       `}</style>
     </header>
   )
@@ -574,19 +614,43 @@ const styles = {
   mobileRight: {
     display: 'flex',
     alignItems: 'center',
-    gap: 8,
+    gap: 6,
+  },
+  mobileLeaderboardBtn: {
+    display: 'inline-flex',
+    alignItems: 'center',
+    gap: 4,
+    padding: '0.34rem 0.65rem',
+    borderRadius: 'var(--radius-full, 9999px)',
+    background: 'linear-gradient(135deg, rgba(255, 209, 102, 0.16) 0%, rgba(255, 140, 66, 0.2) 100%)',
+    border: '1.5px solid rgba(255, 209, 102, 0.45)',
+    color: '#FFD166',
+    fontSize: '0.78rem',
+    fontWeight: 800,
+    textDecoration: 'none',
+    boxShadow: '0 2px 10px rgba(255, 209, 102, 0.18)',
+    transition: 'all 0.2s ease',
+    whiteSpace: 'nowrap',
+    letterSpacing: '0.02em',
+  },
+  mobileLeaderboardBtnActive: {
+    background: 'linear-gradient(135deg, #FFD166 0%, #FF8C42 100%)',
+    color: '#0C081C',
+    borderColor: '#FFD166',
+    boxShadow: '0 2px 14px rgba(255, 209, 102, 0.5)',
   },
   mobilePlayBtn: {
     display: 'inline-flex',
     alignItems: 'center',
     gap: 4,
-    padding: '0.35rem 0.8rem',
+    padding: '0.34rem 0.72rem',
     borderRadius: 'var(--radius-full)',
     background: 'linear-gradient(135deg, var(--festival-saffron, #FF8C42), var(--festival-gold, #FFD166))',
     color: '#0C081C',
-    fontSize: '0.8rem',
+    fontSize: '0.78rem',
     fontWeight: 800,
     textDecoration: 'none',
+    whiteSpace: 'nowrap',
   },
   hamburgerBtn: {
     width: 34,
