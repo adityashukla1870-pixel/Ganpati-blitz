@@ -1,4 +1,5 @@
 import os
+import re
 import uuid
 import random
 import string
@@ -10,6 +11,7 @@ from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
+import pymongo.errors
 from pymongo import MongoClient, DESCENDING, ASCENDING
 from pymongo.errors import ConnectionFailure
 from services.progression import ACHIEVEMENTS, award_xp, unlock_game_achievements, progression_snapshot
@@ -60,44 +62,118 @@ socketio_async_mode = os.getenv("SOCKETIO_ASYNC_MODE", "threading")
 socketio = SocketIO(app, cors_allowed_origins=socketio_cors, async_mode=socketio_async_mode,
                     ping_timeout=30, ping_interval=10)
 
-MONGO_URI = os.getenv("MONGO_URI", "mongodb://localhost:27017/ganpati_blitz")
+def get_sanitized_mongo_uri():
+    raw = os.getenv("MONGO_URI", "").strip()
+    if (raw.startswith('"') and raw.endswith('"')) or (raw.startswith("'") and raw.endswith("'")):
+        raw = raw[1:-1].strip()
+    return raw or "mongodb://localhost:27017/ganpati_blitz"
+
+
+def mask_credentials(text):
+    if not text:
+        return ""
+    return re.sub(r"://([^:]+):([^@]+)@", r"://\1:***@", str(text))
+
+
+def diagnose_mongo_error(err, uri):
+    safe_uri = mask_credentials(uri)
+    raw_error_str = mask_credentials(str(err))
+    error_type = type(err).__name__
+
+    is_production = os.getenv("FLASK_ENV") == "production" or "RENDER" in os.environ
+    is_localhost = "localhost" in uri or "127.0.0.1" in uri
+    has_brackets = "<" in uri or ">" in uri
+
+    if is_localhost and is_production:
+        return {
+            "category": "MISSING_MONGO_URI",
+            "error_type": error_type,
+            "message": "MONGO_URI is missing or pointing to localhost in production. Please set MONGO_URI in Render Environment Variables.",
+            "safe_error": raw_error_str,
+        }
+    elif has_brackets:
+        return {
+            "category": "UNREPLACED_PLACEHOLDERS",
+            "error_type": error_type,
+            "message": "MONGO_URI contains '<' or '>' template brackets. Replace '<password>' and '<username>' with your actual database credentials in Render.",
+            "safe_error": raw_error_str,
+        }
+    elif isinstance(err, pymongo.errors.OperationFailure) or "authentication failed" in raw_error_str.lower():
+        return {
+            "category": "AUTH_FAILED",
+            "error_type": error_type,
+            "message": "MongoDB authentication failed. Verify your database username and password in Render. If your password contains special characters (@, %, #, +), URL-encode them.",
+            "safe_error": raw_error_str,
+        }
+    elif isinstance(err, pymongo.errors.ServerSelectionTimeoutError) or "timed out" in raw_error_str.lower():
+        return {
+            "category": "IP_NOT_WHITELISTED_OR_TIMEOUT",
+            "error_type": error_type,
+            "message": "Connection to MongoDB cluster timed out. Verify MongoDB Atlas Network Access: Add IP 0.0.0.0/0 (Allow access from anywhere).",
+            "safe_error": raw_error_str,
+        }
+    elif isinstance(err, pymongo.errors.ConfigurationError):
+        return {
+            "category": "CONFIGURATION_ERROR",
+            "error_type": error_type,
+            "message": f"MongoDB configuration error. Verify connection string format and ensure dnspython is installed: {raw_error_str}",
+            "safe_error": raw_error_str,
+        }
+    else:
+        return {
+            "category": "DATABASE_ERROR",
+            "error_type": error_type,
+            "message": f"MongoDB connection error: {raw_error_str}",
+            "safe_error": raw_error_str,
+        }
+
 
 _client = None
 _indexes_ready = False
+_last_db_error = None
 
 
 def get_db():
-    global _client, _indexes_ready
+    global _client, _indexes_ready, _last_db_error
+    uri = get_sanitized_mongo_uri()
     try:
         if _client is None:
             _client = MongoClient(
-                MONGO_URI,
-                serverSelectionTimeoutMS=5000,
-                connectTimeoutMS=5000,
-                socketTimeoutMS=5000,
+                uri,
+                serverSelectionTimeoutMS=3000,
+                connectTimeoutMS=3000,
+                socketTimeoutMS=3000,
             )
         _client.admin.command("ping")
-    except Exception:
-        return None, "MongoDB connection failed"
+        _last_db_error = None
+    except Exception as e:
+        _client = None  # Reset client so next request makes a fresh attempt
+        _last_db_error = diagnose_mongo_error(e, uri)
+        app.logger.error(f"[MongoDB Error] {_last_db_error['category']}: {_last_db_error['message']}")
+        return None, _last_db_error["message"]
+
     db = _client.get_default_database(default="ganpati_blitz")
     if not _indexes_ready:
-        db.players.create_index([("player_id", ASCENDING)], unique=True)
-        db.players.create_index([("campus", ASCENDING), ("rating", DESCENDING)])
-        db.game_scores.create_index([("game_id", ASCENDING), ("score", DESCENDING)])
-        db.game_scores.create_index([("player_id", ASCENDING), ("game_id", ASCENDING), ("created_at", DESCENDING)])
-        db.game_scores.create_index(
-            [("player_id", ASCENDING), ("session_id", ASCENDING)],
-            unique=True,
-            partialFilterExpression={"session_id": {"$type": "string"}},
-        )
-        db.xp_events.create_index([("player_id", ASCENDING), ("reward_key", ASCENDING)], unique=True)
-        db.daily_completions.create_index([("player_id", ASCENDING), ("challenge_id", ASCENDING)], unique=True)
-        db.player_achievements.create_index([("player_id", ASCENDING), ("achievement_id", ASCENDING)], unique=True)
-        db.players.create_index([("universal_points", DESCENDING)])
-        db.players.create_index([("campus", ASCENDING), ("universal_points", DESCENDING)])
-        db.point_transactions.create_index([("player_id", ASCENDING), ("run_id", ASCENDING)], unique=True)
-        db.point_transactions.create_index([("player_id", ASCENDING), ("created_at", DESCENDING)])
-        _indexes_ready = True
+        try:
+            db.players.create_index([("player_id", ASCENDING)], unique=True)
+            db.players.create_index([("campus", ASCENDING), ("rating", DESCENDING)])
+            db.game_scores.create_index([("game_id", ASCENDING), ("score", DESCENDING)])
+            db.game_scores.create_index([("player_id", ASCENDING), ("game_id", ASCENDING), ("created_at", DESCENDING)])
+            db.game_scores.create_index(
+                [("player_id", ASCENDING), ("session_id", ASCENDING)],
+                unique=True,
+                partialFilterExpression={"session_id": {"$type": "string"}},
+            )
+            db.xp_events.create_index([("player_id", ASCENDING), ("reward_key", ASCENDING)], unique=True)
+            db.daily_completions.create_index([("player_id", ASCENDING), ("challenge_id", ASCENDING)], unique=True)
+            db.player_achievements.create_index([("player_id", ASCENDING), ("achievement_id", ASCENDING)], unique=True)
+            db.players.create_index([("universal_points", DESCENDING)])
+            db.players.create_index([("campus", ASCENDING), ("universal_points", DESCENDING)])
+            db.point_transactions.create_index([("player_id", ASCENDING), ("run_id", ASCENDING)], unique=True)
+            db.point_transactions.create_index([("player_id", ASCENDING), ("created_at", DESCENDING)])
+            _indexes_ready = True
+        except Exception as idx_err:
+            app.logger.warning(f"[MongoDB Index Warning] Non-fatal index creation warning: {mask_credentials(idx_err)}")
     return db, None
 
 
@@ -132,18 +208,26 @@ def generate_seed():
 def health():
     db, err = get_db()
     if err:
+        diag = _last_db_error or {}
         return jsonify({
             "status": "unhealthy",
             "service": "ganpati-blitz-backend",
-            "database": "disconnected",
-            "error": str(err),
-            "timestamp": datetime.utcnow().isoformat() + "Z"
+            "database": {
+                "connected": False,
+                "category": diag.get("category", "DATABASE_ERROR"),
+                "reason": diag.get("message", err),
+                "error_type": diag.get("error_type", "DatabaseError"),
+            },
+            "timestamp": datetime.utcnow().isoformat() + "Z",
         }), 503
     return jsonify({
         "status": "healthy",
         "service": "ganpati-blitz-backend",
-        "database": "connected",
-        "timestamp": datetime.utcnow().isoformat() + "Z"
+        "database": {
+            "connected": True,
+            "name": db.name,
+        },
+        "timestamp": datetime.utcnow().isoformat() + "Z",
     }), 200
 
 
