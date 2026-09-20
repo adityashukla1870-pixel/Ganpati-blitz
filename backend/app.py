@@ -14,6 +14,7 @@ from flask_socketio import SocketIO, emit, join_room, leave_room
 import pymongo.errors
 from pymongo import MongoClient, DESCENDING, ASCENDING
 from pymongo.errors import ConnectionFailure
+from werkzeug.security import generate_password_hash, check_password_hash
 from services.progression import ACHIEVEMENTS, award_xp, unlock_game_achievements, progression_snapshot
 from services.universal_points import (
     award_universal_points,
@@ -345,19 +346,28 @@ def create_or_get_player():
     display_name = data.get("display_name", "").strip()
     campus = data.get("campus", "").strip()
     avatar = data.get("avatar", "🪷").strip() or "🪷"
+    pin = str(data.get("pin", "")).strip()
 
     if not display_name or not campus:
         return jsonify({"error": "display_name and campus are required"}), 400
-    if len(display_name) > 40 or len(campus) > 80:
-        return jsonify({"error": "display_name or campus is too long"}), 400
+    if len(display_name) < 2 or len(display_name) > 40:
+        return jsonify({"error": "Display name must be between 2 and 40 characters"}), 400
+    if len(campus) > 80:
+        return jsonify({"error": "campus is too long"}), 400
+    if not pin or len(pin) < 4 or len(pin) > 8:
+        return jsonify({"error": "Security PIN must be between 4 and 8 digits/characters"}), 400
 
     db, err = get_db()
     if err:
         return jsonify({"error": err}), 503
 
-    existing = db.players.find_one({"display_name": display_name, "campus": campus})
+    existing = db.players.find_one({
+        "display_name": {"$regex": f"^{re.escape(display_name)}$", "$options": "i"},
+        "campus": campus,
+        "player_id": {"$not": {"$regex": "^seed"}},
+    })
     if existing:
-        return jsonify(serialize_player_profile(db, existing, is_existing=True)), 200
+        return jsonify({"error": f"An account named '{display_name}' already exists at {campus}. Please switch to Log In."}), 409
 
     player_id = str(uuid.uuid4())
     player = {
@@ -365,6 +375,7 @@ def create_or_get_player():
         "display_name": display_name,
         "campus": campus,
         "avatar": avatar,
+        "pin_hash": generate_password_hash(pin),
         "universal_points": 0,
         "rating": 1000,
         "games_played": 0,
@@ -385,9 +396,12 @@ def login_player():
 
     display_name = data.get("display_name", "").strip()
     campus = data.get("campus", "").strip()
+    pin = str(data.get("pin", "")).strip()
 
     if not display_name:
         return jsonify({"error": "display_name is required"}), 400
+    if not pin:
+        return jsonify({"error": "Security PIN is required"}), 400
 
     db, err = get_db()
     if err:
@@ -409,7 +423,19 @@ def login_player():
         })
 
     if not existing:
-        return jsonify({"error": f"No player account found for '{display_name}'. Please verify your name or switch to Register."}), 404
+        campus_suffix = f" at {campus}" if campus and campus != "All Campuses" else ""
+        return jsonify({"error": f"No account found for '{display_name}'{campus_suffix}. Please check spelling or click Create Account."}), 404
+
+    # Security verification via PIN
+    stored_hash = existing.get("pin_hash")
+    if not stored_hash:
+        # Account claim migration: First login secures the existing legacy account with their chosen PIN
+        new_hash = generate_password_hash(pin)
+        db.players.update_one({"_id": existing["_id"]}, {"$set": {"pin_hash": new_hash}})
+        existing["pin_hash"] = new_hash
+    else:
+        if not check_password_hash(stored_hash, pin):
+            return jsonify({"error": "Incorrect Security PIN. Please verify your PIN and try again."}), 401
 
     return jsonify(serialize_player_profile(db, existing, is_existing=True)), 200
 

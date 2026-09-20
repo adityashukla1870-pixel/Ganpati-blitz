@@ -17,13 +17,13 @@ api.interceptors.response.use(
   }
 )
 
-export const createPlayer = async (displayName, campus, avatar = '🪷') => {
-  const res = await api.post('/api/player', { display_name: displayName, campus, avatar })
+export const createPlayer = async (displayName, campus, avatar = '🪷', pin = '') => {
+  const res = await api.post('/api/player', { display_name: displayName, campus, avatar, pin })
   return res.data
 }
 
-export const loginPlayer = async (displayName, campus = null) => {
-  const res = await api.post('/api/player/login', { display_name: displayName, campus })
+export const loginPlayer = async (displayName, campus = null, pin = '') => {
+  const res = await api.post('/api/player/login', { display_name: displayName, campus, pin })
   return res.data
 }
 

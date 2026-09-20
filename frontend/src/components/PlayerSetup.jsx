@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { User, School, ArrowRight, LogIn, UserPlus, Sparkles, CheckCircle2 } from 'lucide-react'
+import { User, School, ArrowRight, LogIn, UserPlus, Sparkles, CheckCircle2, Lock } from 'lucide-react'
 import Button from './Button'
 import { createPlayer, loginPlayer } from '../services/api'
 import { CAMPUSES, DEFAULT_CAMPUS } from '../config/campuses'
@@ -11,6 +11,7 @@ export default function PlayerSetup({ onSubmit, defaultMode = 'create' }) {
   const [mode, setMode] = useState(defaultMode) // 'create' | 'login'
   const [name, setName] = useState('')
   const [campus, setCampus] = useState(DEFAULT_CAMPUS)
+  const [pin, setPin] = useState('')
   const [avatar, setAvatar] = useState('🪷')
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
@@ -27,6 +28,10 @@ export default function PlayerSetup({ onSubmit, defaultMode = 'create' }) {
         newErrors.campus = 'Please select a campus'
       }
     }
+    const trimmedPin = pin.trim()
+    if (!trimmedPin || trimmedPin.length < 4 || trimmedPin.length > 8) {
+      newErrors.pin = 'Security PIN must be between 4 and 8 digits'
+    }
     setErrors(newErrors)
     return Object.keys(newErrors).length === 0
   }
@@ -41,18 +46,20 @@ export default function PlayerSetup({ onSubmit, defaultMode = 'create' }) {
 
     try {
       if (mode === 'login') {
-        const data = await loginPlayer(name.trim(), campus === 'All Campuses' ? null : campus)
-        setSuccessMsg(`Welcome back, ${data.display_name}! Loading your stats...`)
+        const data = await loginPlayer(
+          name.trim(),
+          campus === 'All Campuses' ? null : campus,
+          pin.trim()
+        )
+        setSuccessMsg(`Welcome back, ${data.display_name}! Restoring your stats & rank...`)
         localStorage.setItem('ganpati_player', JSON.stringify(data))
         localStorage.setItem('ganpati_universal_points', String(data.universal_points || 0))
         setTimeout(() => {
           onSubmit?.(data)
         }, 500)
       } else {
-        const data = await createPlayer(name.trim(), campus, avatar)
-        if (data.is_existing) {
-          setSuccessMsg(`Existing account found for ${data.display_name}! Logged you in.`)
-        }
+        const data = await createPlayer(name.trim(), campus, avatar, pin.trim())
+        setSuccessMsg(`Account created for ${data.display_name}! Entering game...`)
         localStorage.setItem('ganpati_player', JSON.stringify(data))
         localStorage.setItem('ganpati_universal_points', String(data.universal_points || 0))
         setTimeout(() => {
@@ -60,27 +67,31 @@ export default function PlayerSetup({ onSubmit, defaultMode = 'create' }) {
         }, 500)
       }
     } catch (err) {
+      console.error('PlayerSetup auth error:', err)
+      const status = err.response?.status
       const serverErr = err.response?.data?.error
-      if (mode === 'login') {
+
+      if (!err.response) {
+        // Network / connectivity issue
         setErrors({
-          submit: serverErr || `No account found for "${name.trim()}". Check spelling or click "Create Account".`,
+          submit: 'Cannot connect to game server. If Render backend is sleeping (free tier), please wait 20-30 seconds and try again.',
+        })
+      } else if (status === 401) {
+        setErrors({
+          submit: serverErr || 'Incorrect Security PIN for this account. Please try again.',
+        })
+      } else if (status === 409) {
+        setErrors({
+          submit: serverErr || 'An account with this name already exists in this campus. Switch to "Log In".',
+        })
+      } else if (status === 404) {
+        setErrors({
+          submit: serverErr || `No account found for "${name.trim()}". Check spelling or switch to "Create Account".`,
         })
       } else {
-        // Offline fallback for registration
-        const localId = `player_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
-        const localData = {
-          player_id: localId,
-          display_name: name.trim(),
-          campus,
-          avatar,
-          level: 1,
-          xp: 0,
-          universal_points: 0,
-          created_at: new Date().toISOString(),
-        }
-        localStorage.setItem('ganpati_player', JSON.stringify(localData))
-        localStorage.setItem('ganpati_universal_points', '0')
-        onSubmit?.(localData)
+        setErrors({
+          submit: serverErr || 'An unexpected error occurred. Please try again.',
+        })
       }
     } finally {
       setLoading(false)
@@ -261,6 +272,43 @@ export default function PlayerSetup({ onSubmit, defaultMode = 'create' }) {
             >
               {errors.campus}
             </motion.span>
+          )}
+        </div>
+
+        {/* Security PIN Field */}
+        <div className="form-group" style={{ marginBottom: 0 }}>
+          <label className="form-label" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <span style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+              <Lock size={14} />
+              {mode === 'create' ? 'Security PIN (Choose 4-8 Digits)' : 'Security PIN'}
+            </span>
+            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+              {mode === 'create' ? 'Protects your points' : 'Account verification'}
+            </span>
+          </label>
+          <input
+            type="password"
+            className="form-input"
+            placeholder={mode === 'create' ? 'Set a secret PIN (e.g. 1234)' : 'Enter your secret PIN'}
+            value={pin}
+            onChange={(e) => setPin(e.target.value)}
+            maxLength={8}
+            inputMode="numeric"
+            autoComplete={mode === 'create' ? 'new-password' : 'current-password'}
+          />
+          {errors.pin && (
+            <motion.span
+              initial={{ opacity: 0, y: -5 }}
+              animate={{ opacity: 1, y: 0 }}
+              style={{ color: 'var(--danger)', fontSize: '0.8rem', marginTop: '0.25rem', display: 'block' }}
+            >
+              {errors.pin}
+            </motion.span>
+          )}
+          {mode === 'login' && (
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.25rem', display: 'block' }}>
+              First time logging in with an existing account? The PIN you enter will be saved as your permanent PIN.
+            </span>
           )}
         </div>
 
