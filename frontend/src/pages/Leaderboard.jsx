@@ -9,18 +9,9 @@ import { getGlobalLeaderboard } from '../services/api'
 import { getPlayer } from '../utils/storage'
 import { getRankTier } from '../config/universalPoints'
 import { GAMES, GAME_LIST } from '../config/games'
+import { CAMPUSES } from '../config/campuses'
 
-const CAMPUSES = [
-  'All Campuses',
-  'NIAT Jaipur',
-  'NIAT Delhi',
-  'NIAT Pune',
-  'NIAT Bangalore',
-  'NIAT Hyderabad',
-  'NIAT Chennai',
-  'NIAT Mumbai',
-  'Other',
-]
+const CAMPUS_OPTIONS = ['All Campuses', ...CAMPUSES]
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -502,7 +493,7 @@ export default function Leaderboard() {
               onChange={(e) => setCampus(e.target.value)}
               style={{ minWidth: '180px', padding: '0.55rem 1rem', fontSize: '0.9rem', borderRadius: 'var(--radius-md)' }}
             >
-              {CAMPUSES.map((c) => (
+              {CAMPUS_OPTIONS.map((c) => (
                 <option key={c} value={c}>
                   {c}
                 </option>

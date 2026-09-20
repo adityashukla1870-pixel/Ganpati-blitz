@@ -24,7 +24,7 @@ class TestAPIEndpoints(unittest.TestCase):
         # Aditya Shukla exists in Atlas with 284 UP
         res = self.client.post('/api/player/login', json={
             'display_name': 'Aditya Shukla',
-            'campus': 'NIAT Jaipur'
+            'campus': 'Vivekananda Global University'
         })
         self.assertEqual(res.status_code, 200)
         data = json.loads(res.data)
@@ -35,7 +35,7 @@ class TestAPIEndpoints(unittest.TestCase):
     def test_player_login_not_found(self):
         res = self.client.post('/api/player/login', json={
             'display_name': 'NonExistentPlayer99999',
-            'campus': 'NIAT Jaipur'
+            'campus': 'Vivekananda Global University'
         })
         self.assertEqual(res.status_code, 404)
 

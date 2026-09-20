@@ -3,36 +3,18 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { User, School, ArrowRight, LogIn, UserPlus, Sparkles, CheckCircle2 } from 'lucide-react'
 import Button from './Button'
 import { createPlayer, loginPlayer } from '../services/api'
-
-const CAMPUSES = [
-  'NIAT Jaipur',
-  'NIAT Delhi',
-  'NIAT Pune',
-  'NIAT Bangalore',
-  'NIAT Hyderabad',
-  'NIAT Chennai',
-  'NIAT Mumbai',
-  'Other (type below)',
-]
+import { CAMPUSES, DEFAULT_CAMPUS } from '../config/campuses'
 
 const AVATARS = ['🪷', '🥟', '🪔', '🥁', '🐭', '🎨', '⚡', '🧠']
 
 export default function PlayerSetup({ onSubmit, defaultMode = 'create' }) {
   const [mode, setMode] = useState(defaultMode) // 'create' | 'login'
   const [name, setName] = useState('')
-  const [campus, setCampus] = useState('NIAT Jaipur')
-  const [customCampus, setCustomCampus] = useState('')
+  const [campus, setCampus] = useState(DEFAULT_CAMPUS)
   const [avatar, setAvatar] = useState('🪷')
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
   const [successMsg, setSuccessMsg] = useState('')
-
-  const getFinalCampus = () => {
-    if (campus === 'Other (type below)') {
-      return customCampus.trim() || 'Other'
-    }
-    return campus
-  }
 
   const validate = () => {
     const newErrors = {}
@@ -43,9 +25,6 @@ export default function PlayerSetup({ onSubmit, defaultMode = 'create' }) {
     if (mode === 'create') {
       if (!campus) {
         newErrors.campus = 'Please select a campus'
-      }
-      if (campus === 'Other (type below)' && customCampus.trim().length < 2) {
-        newErrors.campus = 'Please enter your campus name'
       }
     }
     setErrors(newErrors)
@@ -59,11 +38,10 @@ export default function PlayerSetup({ onSubmit, defaultMode = 'create' }) {
     setLoading(true)
     setErrors({})
     setSuccessMsg('')
-    const finalCampus = getFinalCampus()
 
     try {
       if (mode === 'login') {
-        const data = await loginPlayer(name.trim(), campus === 'All Campuses' ? null : finalCampus)
+        const data = await loginPlayer(name.trim(), campus === 'All Campuses' ? null : campus)
         setSuccessMsg(`Welcome back, ${data.display_name}! Loading your stats...`)
         localStorage.setItem('ganpati_player', JSON.stringify(data))
         localStorage.setItem('ganpati_universal_points', String(data.universal_points || 0))
@@ -71,7 +49,7 @@ export default function PlayerSetup({ onSubmit, defaultMode = 'create' }) {
           onSubmit?.(data)
         }, 500)
       } else {
-        const data = await createPlayer(name.trim(), finalCampus, avatar)
+        const data = await createPlayer(name.trim(), campus, avatar)
         if (data.is_existing) {
           setSuccessMsg(`Existing account found for ${data.display_name}! Logged you in.`)
         }
@@ -93,7 +71,7 @@ export default function PlayerSetup({ onSubmit, defaultMode = 'create' }) {
         const localData = {
           player_id: localId,
           display_name: name.trim(),
-          campus: finalCampus,
+          campus,
           avatar,
           level: 1,
           xp: 0,
@@ -285,26 +263,6 @@ export default function PlayerSetup({ onSubmit, defaultMode = 'create' }) {
             </motion.span>
           )}
         </div>
-
-        {/* Custom Campus input */}
-        {campus === 'Other (type below)' && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="form-group"
-            style={{ marginBottom: 0 }}
-          >
-            <label className="form-label">Your Campus Name</label>
-            <input
-              type="text"
-              className="form-input"
-              placeholder="Enter your campus name"
-              value={customCampus}
-              onChange={(e) => setCustomCampus(e.target.value)}
-            />
-          </motion.div>
-        )}
 
         {/* Error message */}
         {errors.submit && (
