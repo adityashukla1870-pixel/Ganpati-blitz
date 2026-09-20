@@ -49,10 +49,10 @@ const CELL = {
 };
 
 const CAT_COLORS = [
-  { name: 'Marjar', color: '#FF8C00', homeX: 9, homeY: 8 },    // Orange - Direct chaser
-  { name: 'Shyama', color: '#A855F7', homeX: 8, homeY: 10 },   // Purple - Ambusher
-  { name: 'Pinku',  color: '#EC4899', homeX: 9, homeY: 10 },   // Pink - Flanker
-  { name: 'Neelu',  color: '#06B6D4', homeX: 10, homeY: 10 },  // Cyan - Wanderer
+  { name: 'Marjar', color: '#FF8C00', homeX: 9, homeY: 8 },
+  { name: 'Shyama', color: '#A855F7', homeX: 8, homeY: 10 },
+  { name: 'Pinku',  color: '#EC4899', homeX: 9, homeY: 10 },
+  { name: 'Neelu',  color: '#06B6D4', homeX: 10, homeY: 10 },
 ];
 
 const TIER_PARAMS = {
@@ -98,6 +98,46 @@ const TIER_PARAMS = {
   },
 };
 
+function createInitialBoard(tier) {
+  const grid = [];
+  let dots = 0;
+  for (let r = 0; r < ROWS; r++) {
+    grid[r] = [];
+    for (let c = 0; c < COLS; c++) {
+      const ch = MAP_TEMPLATE[r][c];
+      if (ch === '#') grid[r][c] = CELL.WALL;
+      else if (ch === '.') {
+        grid[r][c] = CELL.DOT;
+        dots++;
+      } else if (ch === 'O') {
+        grid[r][c] = CELL.POWER;
+        dots++;
+      } else if (ch === '-') grid[r][c] = CELL.DOOR;
+      else if (ch === 'T') grid[r][c] = CELL.TUNNEL;
+      else grid[r][c] = CELL.EMPTY;
+    }
+  }
+
+  const spawnedCats = [];
+  for (let i = 0; i < tier.catsCount; i++) {
+    const def = CAT_COLORS[i % CAT_COLORS.length];
+    spawnedCats.push({
+      id: i,
+      name: def.name,
+      color: def.color,
+      x: def.homeX,
+      y: def.homeY,
+      dir: { x: 0, y: i === 0 ? -1 : 0 },
+      speed: tier.catSpeed,
+      state: i === 0 ? 'CHASE' : 'HOUSE',
+      houseTimer: i * 3.5,
+      target: { x: 9, y: 16 },
+    });
+  }
+
+  return { grid, dots, spawnedCats };
+}
+
 export default function MushakMaze({ player }) {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -125,24 +165,28 @@ export default function MushakMaze({ player }) {
   const [progressionResult, setProgressionResult] = useState(null);
 
   const canvasRef = useRef(null);
-  const gameLoopRef = useRef(null);
   const audioCtxRef = useRef(null);
   const timerIntervalRef = useRef(null);
 
-  // Mutable Game State Reference for 60fps loop
+  // Initialize board immediately so grid is NEVER empty
+  const initialDataRef = useRef(null);
+  if (!initialDataRef.current) {
+    initialDataRef.current = createInitialBoard(tier);
+  }
+
   const engineRef = useRef({
-    grid: [],
-    dotsRemaining: 0,
+    grid: initialDataRef.current.grid,
+    dotsRemaining: initialDataRef.current.dots,
     mushak: {
       x: 9,
       y: 16,
       dir: { x: 0, y: 0 },
-      nextDir: { x: 0, y: 0 },
+      nextDir: { x: -1, y: 0 },
       speed: tier.mushakSpeed,
       mouthAngle: 0.2,
       mouthSpeed: 12,
     },
-    cats: [],
+    cats: initialDataRef.current.spawnedCats,
     divineTimer: 0,
     divineTotal: tier.divineDuration,
     catCombo: 0,
@@ -160,7 +204,6 @@ export default function MushakMaze({ player }) {
     resetPause: 0,
   });
 
-  // Sound Synthesizer using Web Audio API
   const playSound = useCallback(
     (type) => {
       if (!soundEnabled) return;
@@ -239,46 +282,6 @@ export default function MushakMaze({ player }) {
     [soundEnabled]
   );
 
-  const initBoard = useCallback(() => {
-    const grid = [];
-    let dots = 0;
-    for (let r = 0; r < ROWS; r++) {
-      grid[r] = [];
-      for (let c = 0; c < COLS; c++) {
-        const ch = MAP_TEMPLATE[r][c];
-        if (ch === '#') grid[r][c] = CELL.WALL;
-        else if (ch === '.') {
-          grid[r][c] = CELL.DOT;
-          dots++;
-        } else if (ch === 'O') {
-          grid[r][c] = CELL.POWER;
-          dots++;
-        } else if (ch === '-') grid[r][c] = CELL.DOOR;
-        else if (ch === 'T') grid[r][c] = CELL.TUNNEL;
-        else grid[r][c] = CELL.EMPTY;
-      }
-    }
-
-    const spawnedCats = [];
-    for (let i = 0; i < tier.catsCount; i++) {
-      const def = CAT_COLORS[i % CAT_COLORS.length];
-      spawnedCats.push({
-        id: i,
-        name: def.name,
-        color: def.color,
-        x: def.homeX,
-        y: def.homeY,
-        dir: { x: 0, y: i === 0 ? -1 : 0 },
-        speed: tier.catSpeed,
-        state: i === 0 ? 'CHASE' : 'HOUSE',
-        houseTimer: i * 3.5,
-        target: { x: 9, y: 16 },
-      });
-    }
-
-    return { grid, dots, spawnedCats };
-  }, [tier]);
-
   const handleDifficultyChange = (newTier) => {
     setDifficulty(newTier);
     setSelectedDifficulty('mushak-maze', newTier);
@@ -287,7 +290,6 @@ export default function MushakMaze({ player }) {
 
   const handleGameOver = useCallback(() => {
     if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
-    if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
 
     const eng = engineRef.current;
     eng.gameOver = true;
@@ -369,15 +371,7 @@ export default function MushakMaze({ player }) {
   }, [gameState, isPaused, requestDirection]);
 
   const handleStart = () => {
-    setGameState('countdown');
-    setRawScore(0);
-    setScore(0);
-    setTimeLeft(tier.timeLimit);
-    setLives(3);
-    setStage(1);
-    setDivineTimeRemaining(0);
-
-    const { grid, dots, spawnedCats } = initBoard();
+    const { grid, dots, spawnedCats } = createInitialBoard(tier);
     const eng = engineRef.current;
     eng.grid = grid;
     eng.dotsRemaining = dots;
@@ -406,11 +400,26 @@ export default function MushakMaze({ player }) {
     eng.cleared = false;
     eng.resetPause = 0;
     eng.lastTime = performance.now();
+
+    setRawScore(0);
+    setScore(0);
+    setTimeLeft(tier.timeLimit);
+    setLives(3);
+    setStage(1);
+    setDivineTimeRemaining(0);
+    setGameState('countdown');
   };
 
   const handleCountdownComplete = () => {
+    const eng = engineRef.current;
+    if (!eng.grid || eng.grid.length === 0) {
+      const { grid, dots, spawnedCats } = createInitialBoard(tier);
+      eng.grid = grid;
+      eng.dotsRemaining = dots;
+      eng.cats = spawnedCats;
+    }
+    eng.lastTime = performance.now();
     setGameState('playing');
-    engineRef.current.lastTime = performance.now();
   };
 
   useEffect(() => {
@@ -431,7 +440,7 @@ export default function MushakMaze({ player }) {
   }, [gameState, isPaused, handleGameOver]);
 
   const isWall = (grid, col, row, isCat = false) => {
-    if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return false;
+    if (!grid || !grid[row] || col < 0 || col >= COLS || row < 0 || row >= ROWS) return true;
     const cell = grid[row][col];
     if (cell === CELL.WALL) return true;
     if (cell === CELL.DOOR && !isCat) return true;
@@ -458,6 +467,14 @@ export default function MushakMaze({ player }) {
 
       const eng = engineRef.current;
       if (eng.gameOver) return;
+
+      // Make sure grid exists
+      if (!eng.grid || !eng.grid.length) {
+        const init = createInitialBoard(tier);
+        eng.grid = init.grid;
+        eng.dotsRemaining = init.dots;
+        eng.cats = init.spawnedCats;
+      }
 
       if (eng.resetPause > 0) {
         eng.resetPause -= dt;
@@ -535,7 +552,7 @@ export default function MushakMaze({ player }) {
 
       const mCol = Math.round(m.x);
       const mRow = Math.round(m.y);
-      if (mCol >= 0 && mCol < COLS && mRow >= 0 && mRow < ROWS) {
+      if (eng.grid && eng.grid[mRow] && eng.grid[mRow][mCol] !== undefined) {
         const cell = eng.grid[mRow][mCol];
         if (cell === CELL.DOT) {
           eng.grid[mRow][mCol] = CELL.EMPTY;
@@ -585,7 +602,7 @@ export default function MushakMaze({ player }) {
           setTimeout(() => {
             eng.stage++;
             setStage(eng.stage);
-            const next = initBoard();
+            const next = createInitialBoard(tier);
             eng.grid = next.grid;
             eng.dotsRemaining = next.dots;
             eng.cats = next.spawnedCats;
@@ -773,9 +790,11 @@ export default function MushakMaze({ player }) {
 
     animId = requestAnimationFrame(loop);
     return () => cancelAnimationFrame(animId);
-  }, [gameState, isPaused, diffMultiplier, handleGameOver, initBoard, playSound, tier]);
+  }, [gameState, isPaused, diffMultiplier, handleGameOver, playSound, tier]);
 
   const renderCanvas = (ctx, eng) => {
+    if (!eng.grid || !eng.grid.length) return;
+
     const width = ctx.canvas.width;
     const height = ctx.canvas.height;
     const cellSize = width / COLS;
@@ -784,6 +803,7 @@ export default function MushakMaze({ player }) {
     ctx.fillRect(0, 0, width, height);
 
     for (let r = 0; r < ROWS; r++) {
+      if (!eng.grid[r]) continue;
       for (let c = 0; c < COLS; c++) {
         const cell = eng.grid[r][c];
         const x = c * cellSize;
