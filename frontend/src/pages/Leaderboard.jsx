@@ -184,7 +184,7 @@ export default function Leaderboard() {
   const personalRecords = getPersonalRecords()
 
   return (
-    <div style={{ minHeight: 'calc(100vh - 88px)', padding: '1.5rem 1rem 4rem' }}>
+    <div style={{ minHeight: 'calc(100vh - 88px)', padding: 'clamp(1rem, 2.5vw, 1.5rem) clamp(0.5rem, 2vw, 1rem) 4rem' }}>
       <motion.div
         variants={containerVariants}
         initial="hidden"
@@ -239,116 +239,624 @@ export default function Leaderboard() {
 
         {/* Podium for Top 3 OR Spotlight if 1-2 contenders */}
         {entries.length >= 3 ? (
-          <motion.div
-            variants={itemVariants}
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
-              gap: '0.5rem',
-              alignItems: 'end',
-              margin: '0.5rem 0',
-            }}
-          >
-            {/* Rank 2 - Silver (Left) */}
+          <div style={{ margin: '0.75rem 0 1.5rem', width: '100%' }}>
+            {/* Olympic 3-Step Podium Grid */}
             <div
-              className="card"
               style={{
-                padding: '1rem 0.4rem',
-                textAlign: 'center',
-                background: 'linear-gradient(180deg, rgba(148, 163, 184, 0.15) 0%, rgba(15, 23, 42, 0.5) 100%)',
-                border: '1px solid rgba(148, 163, 184, 0.4)',
-                borderRadius: 'var(--radius-lg)',
-                order: 1,
-                minWidth: 0,
+                display: 'grid',
+                gridTemplateColumns: 'repeat(3, minmax(0, 1fr))',
+                gap: 'clamp(0.35rem, 1.5vw, 0.75rem)',
+                alignItems: 'end',
               }}
             >
-              <div style={{ fontSize: '1.6rem', marginBottom: '0.2rem' }}>🥈</div>
-              <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#94A3B8', textTransform: 'uppercase' }}>#2 Contender</div>
-              <div style={{ fontSize: 'clamp(0.85rem, 2.5vw, 1.05rem)', fontWeight: 800, color: '#F1F5F9', margin: '0.2rem 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {top2.display_name}
-              </div>
-              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '0.4rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{top2.campus}</div>
-              <div style={{ fontSize: 'clamp(0.95rem, 2.8vw, 1.25rem)', fontWeight: 900, color: '#94A3B8', fontFamily: 'var(--font-mono)' }}>
-                {(top2.universal_points || 0).toLocaleString()} <span style={{ fontSize: '0.65rem' }}>UP</span>
-              </div>
-            </div>
+              {/* ===== Rank 2 - Silver (Left) ===== */}
+              <motion.div
+                initial={{ opacity: 0, y: 50 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.22, duration: 0.65, type: 'spring', damping: 14 }}
+                whileHover={{ y: -5, transition: { duration: 0.2 } }}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  order: 1,
+                  minWidth: 0,
+                }}
+              >
+                {/* Contender Card Body */}
+                <div
+                  style={{
+                    width: '100%',
+                    padding: 'clamp(0.75rem, 2vw, 1.1rem) clamp(0.3rem, 1.5vw, 0.6rem)',
+                    textAlign: 'center',
+                    background: 'linear-gradient(180deg, rgba(148, 163, 184, 0.18) 0%, rgba(15, 23, 42, 0.75) 100%)',
+                    border: '1.5px solid rgba(148, 163, 184, 0.5)',
+                    borderBottom: 'none',
+                    borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0',
+                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '0.25rem',
+                  }}
+                >
+                  {/* Medal & Rank Badge */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem', marginBottom: '0.1rem' }}>
+                    <span style={{ fontSize: '1.35rem', filter: 'drop-shadow(0 2px 6px rgba(148, 163, 184, 0.5))' }}>🥈</span>
+                    <span
+                      style={{
+                        fontSize: 'clamp(0.55rem, 1.6vw, 0.65rem)',
+                        fontWeight: 800,
+                        color: '#CBD5E1',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.04em',
+                        background: 'rgba(148, 163, 184, 0.15)',
+                        padding: '0.15rem 0.45rem',
+                        borderRadius: '9999px',
+                        border: '1px solid rgba(148, 163, 184, 0.3)',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      #2 Contender
+                    </span>
+                  </div>
 
-            {/* Rank 1 - Gold (Center, Elevated) */}
-            <div
-              className="card"
-              style={{
-                padding: '1.4rem 0.4rem',
-                textAlign: 'center',
-                background: 'linear-gradient(180deg, rgba(255, 215, 0, 0.2) 0%, rgba(20, 15, 40, 0.7) 100%)',
-                border: '2px solid rgba(255, 215, 0, 0.6)',
-                borderRadius: 'var(--radius-xl)',
-                boxShadow: '0 0 25px rgba(255, 215, 0, 0.25)',
-                order: 2,
-                transform: 'translateY(-6px)',
-                minWidth: 0,
-              }}
-            >
-              <div style={{ fontSize: '2.1rem', marginBottom: '0.2rem', filter: 'drop-shadow(0 0 10px rgba(255,215,0,0.6))' }}>👑</div>
-              <div style={{ fontSize: '0.68rem', fontWeight: 900, color: '#FFD700', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Champion</div>
-              <div style={{ fontSize: 'clamp(0.95rem, 3vw, 1.25rem)', fontWeight: 900, color: '#FFF', margin: '0.2rem 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {top1.display_name}
-              </div>
-              <div style={{ fontSize: '0.68rem', color: 'var(--text-muted)', marginBottom: '0.4rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{top1.campus}</div>
-              <div style={{ fontSize: 'clamp(1.1rem, 3.2vw, 1.5rem)', fontWeight: 900, color: '#FFD700', fontFamily: 'var(--font-mono)' }}>
-                {(top1.universal_points || 0).toLocaleString()} <span style={{ fontSize: '0.68rem' }}>UP</span>
-              </div>
-            </div>
+                  {/* Avatar */}
+                  <div
+                    style={{
+                      width: 'clamp(38px, 9vw, 48px)',
+                      height: 'clamp(38px, 9vw, 48px)',
+                      borderRadius: 'var(--radius-full)',
+                      background: 'rgba(148, 163, 184, 0.15)',
+                      border: '2px solid #94A3B8',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 'clamp(1.1rem, 3vw, 1.5rem)',
+                      boxShadow: '0 0 12px rgba(148, 163, 184, 0.3)',
+                      margin: '0.1rem 0',
+                    }}
+                  >
+                    {top2.avatar || '🪷'}
+                  </div>
 
-            {/* Rank 3 - Bronze (Right) */}
-            <div
-              className="card"
-              style={{
-                padding: '0.9rem 0.4rem',
-                textAlign: 'center',
-                background: 'linear-gradient(180deg, rgba(205, 127, 50, 0.15) 0%, rgba(15, 23, 42, 0.5) 100%)',
-                border: '1px solid rgba(205, 127, 50, 0.4)',
-                borderRadius: 'var(--radius-lg)',
-                order: 3,
-                minWidth: 0,
-              }}
-            >
-              <div style={{ fontSize: '1.6rem', marginBottom: '0.2rem' }}>🥉</div>
-              <div style={{ fontSize: '0.65rem', fontWeight: 800, color: '#CD7F32', textTransform: 'uppercase' }}>#3 Contender</div>
-              <div style={{ fontSize: 'clamp(0.85rem, 2.5vw, 1.05rem)', fontWeight: 800, color: '#F1F5F9', margin: '0.2rem 0', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                {top3.display_name}
-              </div>
-              <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', marginBottom: '0.4rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{top3.campus}</div>
-              <div style={{ fontSize: 'clamp(0.95rem, 2.8vw, 1.25rem)', fontWeight: 900, color: '#CD7F32', fontFamily: 'var(--font-mono)' }}>
-                {(top3.universal_points || 0).toLocaleString()} <span style={{ fontSize: '0.65rem' }}>UP</span>
-              </div>
+                  {/* Player Name */}
+                  <div
+                    style={{
+                      fontSize: 'clamp(0.78rem, 2.5vw, 1.05rem)',
+                      fontWeight: 800,
+                      color: '#F8FAFC',
+                      width: '100%',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      padding: '0 2px',
+                    }}
+                    title={top2.display_name}
+                  >
+                    {top2.display_name}
+                  </div>
+
+                  {/* Campus Chip */}
+                  <div
+                    style={{
+                      fontSize: 'clamp(0.58rem, 1.8vw, 0.68rem)',
+                      color: 'var(--text-muted)',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      padding: '0.1rem 0.4rem',
+                      borderRadius: '4px',
+                      maxWidth: '96%',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                    }}
+                    title={top2.campus}
+                  >
+                    {top2.campus || 'Campus'}
+                  </div>
+
+                  {/* Points */}
+                  <div
+                    style={{
+                      marginTop: '0.2rem',
+                      display: 'flex',
+                      alignItems: 'baseline',
+                      justifyContent: 'center',
+                      gap: '0.25rem',
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 'clamp(0.95rem, 2.8vw, 1.3rem)',
+                        fontWeight: 900,
+                        color: '#E2E8F0',
+                        fontFamily: 'var(--font-mono)',
+                      }}
+                    >
+                      {(top2.universal_points || 0).toLocaleString()}
+                    </span>
+                    <span style={{ fontSize: '0.62rem', fontWeight: 800, color: '#94A3B8' }}>UP</span>
+                  </div>
+                </div>
+
+                {/* Podium Pedestal Step 2 */}
+                <div
+                  style={{
+                    width: '100%',
+                    height: 'clamp(42px, 9vw, 56px)',
+                    background: 'linear-gradient(180deg, rgba(148, 163, 184, 0.35) 0%, rgba(30, 41, 59, 0.9) 100%)',
+                    border: '1.5px solid rgba(148, 163, 184, 0.6)',
+                    borderTop: '3px solid #94A3B8',
+                    borderRadius: '0 0 var(--radius-md) var(--radius-md)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: 'inset 0 2px 6px rgba(255, 255, 255, 0.2), 0 6px 16px rgba(0, 0, 0, 0.4)',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 'clamp(1.1rem, 3.5vw, 1.6rem)',
+                      fontWeight: 900,
+                      fontFamily: 'var(--font-mono)',
+                      color: '#F1F5F9',
+                      lineHeight: 1,
+                      textShadow: '0 0 10px rgba(148, 163, 184, 0.7)',
+                    }}
+                  >
+                    2
+                  </span>
+                  <span style={{ fontSize: '0.55rem', fontWeight: 800, color: '#94A3B8', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                    2ND
+                  </span>
+                </div>
+              </motion.div>
+
+              {/* ===== Rank 1 - Gold (Center, Elevated) ===== */}
+              <motion.div
+                initial={{ opacity: 0, y: 70, scale: 0.92 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ delay: 0.35, duration: 0.75, type: 'spring', damping: 13 }}
+                whileHover={{ y: -8, scale: 1.02, transition: { duration: 0.2 } }}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  order: 2,
+                  minWidth: 0,
+                  transform: 'translateY(-12px)',
+                  zIndex: 2,
+                }}
+              >
+                {/* Contender Card Body */}
+                <div
+                  className="champion-card-glow"
+                  style={{
+                    width: '100%',
+                    padding: 'clamp(0.95rem, 2.8vw, 1.35rem) clamp(0.35rem, 1.8vw, 0.75rem)',
+                    textAlign: 'center',
+                    background: 'linear-gradient(180deg, rgba(255, 215, 0, 0.25) 0%, rgba(26, 16, 45, 0.85) 100%)',
+                    border: '2px solid rgba(255, 215, 0, 0.75)',
+                    borderBottom: 'none',
+                    borderRadius: 'var(--radius-xl) var(--radius-xl) 0 0',
+                    position: 'relative',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '0.25rem',
+                  }}
+                >
+                  {/* Floating Crown with Sparkles */}
+                  <div
+                    className="crown-floating"
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '0.2rem',
+                      marginBottom: '-0.1rem',
+                    }}
+                  >
+                    <span className="sparkle-twinkle" style={{ fontSize: '0.85rem' }}>✨</span>
+                    <span style={{ fontSize: 'clamp(1.75rem, 4.8vw, 2.35rem)', filter: 'drop-shadow(0 0 14px rgba(255, 215, 0, 0.8))' }}>
+                      👑
+                    </span>
+                    <span className="sparkle-twinkle" style={{ fontSize: '0.85rem', animationDelay: '1s' }}>✨</span>
+                  </div>
+
+                  {/* Champion Pill Badge */}
+                  <div
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.3rem',
+                      fontSize: 'clamp(0.62rem, 1.9vw, 0.72rem)',
+                      fontWeight: 900,
+                      color: '#1a0d00',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.06em',
+                      background: 'linear-gradient(135deg, #FFE066, #FFB703)',
+                      padding: '0.18rem 0.55rem',
+                      borderRadius: '9999px',
+                      boxShadow: '0 0 10px rgba(255, 215, 0, 0.4)',
+                      whiteSpace: 'nowrap',
+                    }}
+                  >
+                    <Sparkles size={11} /> Champion
+                  </div>
+
+                  {/* Avatar with Radiant Gold Halo */}
+                  <div
+                    style={{
+                      width: 'clamp(46px, 11vw, 56px)',
+                      height: 'clamp(46px, 11vw, 56px)',
+                      borderRadius: 'var(--radius-full)',
+                      background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 107, 53, 0.3))',
+                      border: '2.5px solid #FFD700',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 'clamp(1.3rem, 3.8vw, 1.8rem)',
+                      boxShadow: '0 0 20px rgba(255, 215, 0, 0.5), inset 0 0 10px rgba(255, 215, 0, 0.3)',
+                      margin: '0.15rem 0',
+                    }}
+                  >
+                    {top1.avatar || '🪷'}
+                  </div>
+
+                  {/* Champion Name */}
+                  <div
+                    style={{
+                      fontSize: 'clamp(0.88rem, 3vw, 1.25rem)',
+                      fontWeight: 900,
+                      color: '#FFF',
+                      width: '100%',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      textShadow: '0 0 12px rgba(255, 215, 0, 0.5)',
+                      padding: '0 2px',
+                    }}
+                    title={top1.display_name}
+                  >
+                    {top1.display_name}
+                  </div>
+
+                  {/* Campus Chip */}
+                  <div
+                    style={{
+                      fontSize: 'clamp(0.6rem, 2vw, 0.72rem)',
+                      color: 'rgba(255, 255, 255, 0.9)',
+                      background: 'rgba(255, 215, 0, 0.12)',
+                      padding: '0.12rem 0.5rem',
+                      borderRadius: '4px',
+                      maxWidth: '96%',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      border: '1px solid rgba(255, 215, 0, 0.3)',
+                    }}
+                    title={top1.campus}
+                  >
+                    {top1.campus || 'Campus'}
+                  </div>
+
+                  {/* Points */}
+                  <div
+                    style={{
+                      marginTop: '0.25rem',
+                      display: 'flex',
+                      alignItems: 'baseline',
+                      justifyContent: 'center',
+                      gap: '0.3rem',
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 'clamp(1.15rem, 3.6vw, 1.65rem)',
+                        fontWeight: 900,
+                        color: '#FFD700',
+                        fontFamily: 'var(--font-mono)',
+                        textShadow: '0 0 14px rgba(255, 215, 0, 0.6)',
+                      }}
+                    >
+                      {(top1.universal_points || 0).toLocaleString()}
+                    </span>
+                    <span style={{ fontSize: '0.7rem', fontWeight: 900, color: '#FFD700' }}>UP</span>
+                  </div>
+                </div>
+
+                {/* Podium Pedestal Step 1 (Highest Step) */}
+                <div
+                  style={{
+                    width: '100%',
+                    height: 'clamp(58px, 13vw, 76px)',
+                    background: 'linear-gradient(180deg, rgba(255, 215, 0, 0.4) 0%, rgba(55, 35, 10, 0.95) 100%)',
+                    border: '2px solid rgba(255, 215, 0, 0.75)',
+                    borderTop: '4px solid #FFD700',
+                    borderRadius: '0 0 var(--radius-md) var(--radius-md)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: 'inset 0 3px 10px rgba(255, 215, 0, 0.4), 0 8px 24px rgba(0, 0, 0, 0.5)',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 'clamp(1.4rem, 4.5vw, 2.1rem)',
+                      fontWeight: 900,
+                      fontFamily: 'var(--font-mono)',
+                      color: '#FFD700',
+                      lineHeight: 1,
+                      textShadow: '0 0 16px rgba(255, 215, 0, 0.8)',
+                    }}
+                  >
+                    1
+                  </span>
+                  <span style={{ fontSize: '0.6rem', fontWeight: 900, color: '#FFD700', letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+                    WINNER
+                  </span>
+                </div>
+              </motion.div>
+
+              {/* ===== Rank 3 - Bronze (Right) ===== */}
+              <motion.div
+                initial={{ opacity: 0, y: 40 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.12, duration: 0.65, type: 'spring', damping: 14 }}
+                whileHover={{ y: -4, transition: { duration: 0.2 } }}
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'center',
+                  order: 3,
+                  minWidth: 0,
+                }}
+              >
+                {/* Contender Card Body */}
+                <div
+                  style={{
+                    width: '100%',
+                    padding: 'clamp(0.7rem, 1.8vw, 1rem) clamp(0.3rem, 1.5vw, 0.6rem)',
+                    textAlign: 'center',
+                    background: 'linear-gradient(180deg, rgba(205, 127, 50, 0.18) 0%, rgba(15, 23, 42, 0.75) 100%)',
+                    border: '1.5px solid rgba(205, 127, 50, 0.5)',
+                    borderBottom: 'none',
+                    borderRadius: 'var(--radius-lg) var(--radius-lg) 0 0',
+                    boxShadow: '0 4px 20px rgba(0, 0, 0, 0.3)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: '0.25rem',
+                  }}
+                >
+                  {/* Medal & Rank Badge */}
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.25rem', marginBottom: '0.1rem' }}>
+                    <span style={{ fontSize: '1.35rem', filter: 'drop-shadow(0 2px 6px rgba(205, 127, 50, 0.5))' }}>🥉</span>
+                    <span
+                      style={{
+                        fontSize: 'clamp(0.55rem, 1.6vw, 0.65rem)',
+                        fontWeight: 800,
+                        color: '#FDBA74',
+                        textTransform: 'uppercase',
+                        letterSpacing: '0.04em',
+                        background: 'rgba(205, 127, 50, 0.15)',
+                        padding: '0.15rem 0.45rem',
+                        borderRadius: '9999px',
+                        border: '1px solid rgba(205, 127, 50, 0.3)',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      #3 Contender
+                    </span>
+                  </div>
+
+                  {/* Avatar */}
+                  <div
+                    style={{
+                      width: 'clamp(36px, 8.5vw, 46px)',
+                      height: 'clamp(36px, 8.5vw, 46px)',
+                      borderRadius: 'var(--radius-full)',
+                      background: 'rgba(205, 127, 50, 0.15)',
+                      border: '2px solid #CD7F32',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 'clamp(1.05rem, 2.8vw, 1.4rem)',
+                      boxShadow: '0 0 12px rgba(205, 127, 50, 0.3)',
+                      margin: '0.1rem 0',
+                    }}
+                  >
+                    {top3.avatar || '🪷'}
+                  </div>
+
+                  {/* Player Name */}
+                  <div
+                    style={{
+                      fontSize: 'clamp(0.78rem, 2.5vw, 1.05rem)',
+                      fontWeight: 800,
+                      color: '#F8FAFC',
+                      width: '100%',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      padding: '0 2px',
+                    }}
+                    title={top3.display_name}
+                  >
+                    {top3.display_name}
+                  </div>
+
+                  {/* Campus Chip */}
+                  <div
+                    style={{
+                      fontSize: 'clamp(0.58rem, 1.8vw, 0.68rem)',
+                      color: 'var(--text-muted)',
+                      background: 'rgba(255, 255, 255, 0.05)',
+                      padding: '0.1rem 0.4rem',
+                      borderRadius: '4px',
+                      maxWidth: '96%',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                    }}
+                    title={top3.campus}
+                  >
+                    {top3.campus || 'Campus'}
+                  </div>
+
+                  {/* Points */}
+                  <div
+                    style={{
+                      marginTop: '0.2rem',
+                      display: 'flex',
+                      alignItems: 'baseline',
+                      justifyContent: 'center',
+                      gap: '0.25rem',
+                    }}
+                  >
+                    <span
+                      style={{
+                        fontSize: 'clamp(0.95rem, 2.8vw, 1.3rem)',
+                        fontWeight: 900,
+                        color: '#FDBA74',
+                        fontFamily: 'var(--font-mono)',
+                      }}
+                    >
+                      {(top3.universal_points || 0).toLocaleString()}
+                    </span>
+                    <span style={{ fontSize: '0.62rem', fontWeight: 800, color: '#CD7F32' }}>UP</span>
+                  </div>
+                </div>
+
+                {/* Podium Pedestal Step 3 */}
+                <div
+                  style={{
+                    width: '100%',
+                    height: 'clamp(28px, 6.5vw, 38px)',
+                    background: 'linear-gradient(180deg, rgba(205, 127, 50, 0.35) 0%, rgba(45, 25, 10, 0.9) 100%)',
+                    border: '1.5px solid rgba(205, 127, 50, 0.6)',
+                    borderTop: '3px solid #CD7F32',
+                    borderRadius: '0 0 var(--radius-md) var(--radius-md)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    boxShadow: 'inset 0 2px 6px rgba(255, 255, 255, 0.15), 0 6px 16px rgba(0, 0, 0, 0.4)',
+                  }}
+                >
+                  <span
+                    style={{
+                      fontSize: 'clamp(0.95rem, 3vw, 1.35rem)',
+                      fontWeight: 900,
+                      fontFamily: 'var(--font-mono)',
+                      color: '#FED7AA',
+                      lineHeight: 1,
+                      textShadow: '0 0 10px rgba(205, 127, 50, 0.6)',
+                    }}
+                  >
+                    3
+                  </span>
+                  <span style={{ fontSize: '0.52rem', fontWeight: 800, color: '#CD7F32', letterSpacing: '0.06em', textTransform: 'uppercase' }}>
+                    3RD
+                  </span>
+                </div>
+              </motion.div>
             </div>
-          </motion.div>
+          </div>
         ) : entries.length >= 1 ? (
           <motion.div
             variants={itemVariants}
             style={{
-              padding: '1.25rem 1rem',
-              textAlign: 'center',
-              background: 'linear-gradient(180deg, rgba(255, 215, 0, 0.15) 0%, rgba(20, 15, 40, 0.6) 100%)',
-              border: '2px solid rgba(255, 215, 0, 0.5)',
-              borderRadius: 'var(--radius-xl)',
-              boxShadow: '0 0 25px rgba(255, 215, 0, 0.2)',
               maxWidth: 420,
-              margin: '0 auto',
+              margin: '0.5rem auto 1.25rem',
+              width: '100%',
             }}
           >
-            <div style={{ fontSize: '2.2rem', marginBottom: '0.2rem', filter: 'drop-shadow(0 0 10px rgba(255,215,0,0.5))' }}>👑</div>
-            <div style={{ fontSize: '0.72rem', fontWeight: 900, color: '#FFD700', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-              Current #1 Champion
+            <div
+              className="champion-card-glow"
+              style={{
+                padding: '1.4rem 1rem',
+                textAlign: 'center',
+                background: 'linear-gradient(180deg, rgba(255, 215, 0, 0.22) 0%, rgba(20, 15, 40, 0.8) 100%)',
+                border: '2px solid rgba(255, 215, 0, 0.7)',
+                borderRadius: 'var(--radius-xl) var(--radius-xl) 0 0',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '0.35rem',
+              }}
+            >
+              <div className="crown-floating" style={{ fontSize: '2.4rem', filter: 'drop-shadow(0 0 14px rgba(255,215,0,0.7))' }}>
+                👑
+              </div>
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.3rem',
+                  fontSize: '0.72rem',
+                  fontWeight: 900,
+                  color: '#1a0d00',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.06em',
+                  background: 'linear-gradient(135deg, #FFE066, #FFB703)',
+                  padding: '0.2rem 0.6rem',
+                  borderRadius: '9999px',
+                }}
+              >
+                <Sparkles size={12} /> Current #1 Champion
+              </div>
+              <div
+                style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: 'var(--radius-full)',
+                  border: '2px solid #FFD700',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  fontSize: '1.6rem',
+                  boxShadow: '0 0 16px rgba(255,215,0,0.4)',
+                  margin: '0.2rem 0',
+                }}
+              >
+                {entries[0].avatar || '🪷'}
+              </div>
+              <div style={{ fontSize: '1.35rem', fontWeight: 900, color: '#FFF' }}>
+                {entries[0].display_name}
+              </div>
+              <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+                {entries[0].campus}
+              </div>
+              <div style={{ fontSize: '1.5rem', fontWeight: 900, color: '#FFD700', fontFamily: 'var(--font-mono)' }}>
+                {(entries[0].universal_points || 0).toLocaleString()} <span style={{ fontSize: '0.75rem' }}>UP</span>
+              </div>
             </div>
-            <div style={{ fontSize: '1.35rem', fontWeight: 900, color: '#FFF', margin: '0.25rem 0' }}>
-              {entries[0].display_name}
-            </div>
-            <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>
-              {entries[0].campus}
-            </div>
-            <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#FFD700', fontFamily: 'var(--font-mono)' }}>
-              {(entries[0].universal_points || 0).toLocaleString()} <span style={{ fontSize: '0.75rem' }}>UP</span>
+            {/* Podium Base for Single Spotlight */}
+            <div
+              style={{
+                width: '100%',
+                height: 48,
+                background: 'linear-gradient(180deg, rgba(255, 215, 0, 0.35) 0%, rgba(55, 35, 10, 0.9) 100%)',
+                border: '2px solid rgba(255, 215, 0, 0.7)',
+                borderTop: '3px solid #FFD700',
+                borderRadius: '0 0 var(--radius-md) var(--radius-md)',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                gap: '0.5rem',
+                color: '#FFD700',
+                fontWeight: 900,
+                fontSize: '1.1rem',
+                fontFamily: 'var(--font-mono)',
+              }}
+            >
+              ★ RANK 1 CHAMPION ★
             </div>
           </motion.div>
         ) : null}
@@ -358,19 +866,20 @@ export default function Leaderboard() {
           <motion.div
             variants={itemVariants}
             style={{
-              padding: '1rem 1.25rem',
-              background: 'linear-gradient(135deg, rgba(255, 107, 53, 0.15), rgba(255, 215, 0, 0.08))',
-              border: '1px solid rgba(255, 107, 53, 0.4)',
+              padding: 'clamp(0.85rem, 2vw, 1.2rem)',
+              background: 'linear-gradient(135deg, rgba(255, 107, 53, 0.16) 0%, rgba(255, 215, 0, 0.08) 100%)',
+              border: '1px solid rgba(255, 107, 53, 0.45)',
               borderRadius: 'var(--radius-lg)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
               flexWrap: 'wrap',
-              gap: '1rem',
+              gap: '0.85rem',
               boxShadow: '0 4px 20px rgba(0,0,0,0.25)',
             }}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.85rem' }}>
+            {/* Left: Player Profile & Tier */}
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: '220px', flex: '1 1 auto' }}>
               <div
                 style={{
                   width: 44,
@@ -382,32 +891,48 @@ export default function Leaderboard() {
                   alignItems: 'center',
                   justifyContent: 'center',
                   fontSize: '1.4rem',
+                  flexShrink: 0,
+                  boxShadow: `0 0 12px ${playerCard.tier?.border || 'rgba(255,107,53,0.3)'}`,
                 }}
               >
                 {playerCard.avatar || '🪷'}
               </div>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+              <div style={{ minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
                   <span style={{ fontWeight: 800, fontSize: '1.05rem', color: '#FFF' }}>{playerCard.display_name}</span>
-                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>({playerCard.campus})</span>
+                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>({playerCard.campus})</span>
                 </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.2rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginTop: '0.2rem', flexWrap: 'wrap' }}>
                   <span
                     style={{
                       fontSize: '0.7rem',
                       fontWeight: 800,
                       color: playerCard.tier?.color || '#FFD700',
                       background: playerCard.tier?.bg,
-                      padding: '0.1rem 0.45rem',
+                      padding: '0.12rem 0.5rem',
                       borderRadius: '4px',
                       border: `1px solid ${playerCard.tier?.border}`,
                       textTransform: 'uppercase',
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      gap: '0.25rem',
                     }}
                   >
-                    {playerCard.tier?.badge} {playerCard.tier?.name}
+                    <span>{playerCard.tier?.badge}</span>
+                    <span>{playerCard.tier?.name}</span>
                   </span>
                   {playerCard.percentile !== undefined && playerCard.percentile > 0 && (
-                    <span style={{ fontSize: '0.75rem', color: 'var(--success)' }}>
+                    <span
+                      style={{
+                        fontSize: '0.7rem',
+                        fontWeight: 700,
+                        color: 'var(--success, #10B981)',
+                        background: 'rgba(16, 185, 129, 0.12)',
+                        padding: '0.12rem 0.45rem',
+                        borderRadius: '4px',
+                        border: '1px solid rgba(16, 185, 129, 0.25)',
+                      }}
+                    >
                       Top {100 - Math.round(playerCard.percentile)}%
                     </span>
                   )}
@@ -415,20 +940,39 @@ export default function Leaderboard() {
               </div>
             </div>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1.5rem' }}>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+            {/* Right: Symmetrical Stats Strip */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-around',
+                gap: 'clamp(0.85rem, 2vw, 1.5rem)',
+                padding: '0.5rem 1rem',
+                borderRadius: 'var(--radius-md)',
+                background: 'rgba(0, 0, 0, 0.28)',
+                border: '1px solid rgba(255, 255, 255, 0.08)',
+                flex: '1 1 200px',
+              }}
+            >
+              {/* Global Rank */}
+              <div style={{ textAlign: 'center', flex: 1 }}>
+                <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
                   Global Rank
                 </div>
-                <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#FFF', fontFamily: 'var(--font-mono)' }}>
+                <div style={{ fontSize: '1.35rem', fontWeight: 900, color: '#FFF', fontFamily: 'var(--font-mono)', lineHeight: 1.2 }}>
                   #{playerCard.global_rank || '-'}
                 </div>
               </div>
-              <div style={{ textAlign: 'right' }}>
-                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: 0.5 }}>
+
+              {/* Divider */}
+              <div style={{ width: 1, height: 32, background: 'rgba(255, 255, 255, 0.12)' }} />
+
+              {/* Universal Points */}
+              <div style={{ textAlign: 'center', flex: 1 }}>
+                <div style={{ fontSize: '0.62rem', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>
                   Universal Points
                 </div>
-                <div style={{ fontSize: '1.4rem', fontWeight: 900, color: playerCard.tier?.color || '#FFD700', fontFamily: 'var(--font-mono)' }}>
+                <div style={{ fontSize: '1.35rem', fontWeight: 900, color: playerCard.tier?.color || '#FFD700', fontFamily: 'var(--font-mono)', lineHeight: 1.2 }}>
                   {(playerCard.universal_points || 0).toLocaleString()}
                 </div>
               </div>
@@ -475,23 +1019,32 @@ export default function Leaderboard() {
           </motion.div>
         )}
 
-        {/* Filter Controls & "My Game Records" Action */}
+        {/* Filter Controls & "My Game Records" Action Toolbar */}
         <motion.div
           variants={itemVariants}
           style={{
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
-            gap: '1rem',
+            gap: '0.75rem',
             flexWrap: 'wrap',
+            width: '100%',
           }}
         >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          {/* Left Group: Campus select + Refresh */}
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flex: '1 1 auto', minWidth: '220px' }}>
             <select
               className="form-select"
               value={campus}
               onChange={(e) => setCampus(e.target.value)}
-              style={{ minWidth: '180px', padding: '0.55rem 1rem', fontSize: '0.9rem', borderRadius: 'var(--radius-md)' }}
+              style={{
+                flex: 1,
+                minWidth: '150px',
+                padding: '0.55rem 0.85rem',
+                fontSize: '0.88rem',
+                borderRadius: 'var(--radius-md)',
+                cursor: 'pointer',
+              }}
             >
               {CAMPUS_OPTIONS.map((c) => (
                 <option key={c} value={c}>
@@ -517,16 +1070,19 @@ export default function Leaderboard() {
                 display: 'inline-flex',
                 alignItems: 'center',
                 gap: '0.4rem',
+                whiteSpace: 'nowrap',
+                flexShrink: 0,
               }}
             >
-              <RefreshCw size={13} className={loading ? 'animate-spin' : ''} />
-              Refresh
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+              <span>Refresh</span>
             </motion.button>
           </div>
 
+          {/* Right Group: My Game Records Action */}
           <motion.button
-            whileHover={{ scale: 1.04 }}
-            whileTap={{ scale: 0.96 }}
+            whileHover={{ scale: 1.03 }}
+            whileTap={{ scale: 0.97 }}
             onClick={() => setShowStatsDrawer(true)}
             style={{
               padding: '0.55rem 1.1rem',
@@ -539,10 +1095,14 @@ export default function Leaderboard() {
               cursor: 'pointer',
               display: 'inline-flex',
               alignItems: 'center',
-              gap: '0.45rem',
+              justifyContent: 'center',
+              gap: '0.5rem',
+              whiteSpace: 'nowrap',
+              flex: '1 1 180px',
             }}
           >
-            <BookOpen size={15} /> My Game Records
+            <BookOpen size={16} />
+            <span>My Game Records</span>
           </motion.button>
         </motion.div>
 
@@ -600,7 +1160,7 @@ export default function Leaderboard() {
               </p>
             </div>
           ) : (
-            <div className="card" style={{ padding: '1.25rem', overflow: 'hidden' }}>
+            <div className="card" style={{ padding: 'clamp(0.6rem, 2vw, 1.25rem)', overflow: 'hidden' }}>
               <LeaderboardTable entries={entries} currentPlayerId={playerId} />
             </div>
           )}
