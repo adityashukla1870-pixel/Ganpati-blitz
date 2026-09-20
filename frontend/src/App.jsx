@@ -1,5 +1,6 @@
 import { Routes, Route, Navigate, useParams } from 'react-router-dom'
 import { lazy, Suspense, useState, useEffect, useCallback } from 'react'
+import { Analytics } from '@vercel/analytics/react'
 import SplashScreen from './components/SplashScreen'
 import TopNav from './components/TopNav'
 import FestiveBackground from './components/FestiveBackground'
@@ -199,6 +200,7 @@ export default function App() {
           </Routes>
         </Suspense>
       </main>
+      <Analytics />
     </div>
   )
 }

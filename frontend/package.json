@@ -9,12 +9,13 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
+    "axios": "^1.6.5",
+    "framer-motion": "^10.18.0",
+    "lucide-react": "^0.303.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.21.1",
-    "framer-motion": "^10.18.0",
-    "lucide-react": "^0.303.0",
-    "axios": "^1.6.5",
     "socket.io-client": "^4.7.4",
     "uuid": "^9.0.0"
   },
