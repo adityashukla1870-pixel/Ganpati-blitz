@@ -283,7 +283,7 @@ def health():
         diag = _last_db_error or {}
         return jsonify({
             "status": "unhealthy",
-            "service": "ganpati-blitz-backend",
+            "service": "ganpati-blitz",
             "database": {
                 "connected": False,
                 "category": diag.get("category", "DATABASE_ERROR"),
@@ -294,7 +294,7 @@ def health():
         }), 503
     return jsonify({
         "status": "healthy",
-        "service": "ganpati-blitz-backend",
+        "service": "ganpati-blitz",
         "database": {
             "connected": True,
             "name": db.name,

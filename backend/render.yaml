@@ -1,6 +1,6 @@
 services:
   - type: web
-    name: ganpati-blitz-backend
+    name: ganpati-blitz
     runtime: python
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn --worker-class gthread --threads 8 -w 1 --bind 0.0.0.0:$PORT wsgi:app

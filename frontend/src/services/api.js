@@ -1,6 +1,13 @@
 import axios from 'axios'
 
-const rawApiUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+const defaultApiUrl = import.meta.env.PROD
+  ? 'https://ganpati-blitz.onrender.com'
+  : 'http://localhost:5000'
+
+let rawApiUrl = import.meta.env.VITE_API_URL || defaultApiUrl
+if (rawApiUrl.includes('ganpati-blitz-backend.onrender.com')) {
+  rawApiUrl = 'https://ganpati-blitz.onrender.com'
+}
 export const API_URL = rawApiUrl.replace(/\/+$/, '')
 
 const api = axios.create({

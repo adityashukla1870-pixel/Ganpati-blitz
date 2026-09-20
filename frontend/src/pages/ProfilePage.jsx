@@ -5,8 +5,6 @@ import { getPlayer } from '../utils/storage'
 import { Trophy, Flame, Star, Award, Gamepad2, Calendar, Crown } from 'lucide-react'
 import { getRankTier } from '../config/universalPoints'
 
-const API = (import.meta.env.VITE_API_URL || 'http://localhost:5000').replace(/\/+$/, '')
-
 const GAME_LIST = [
   { id: 'modak-rush', name: 'Modak Rush' },
   { id: 'diya-dash', name: 'Diya Dash' },
