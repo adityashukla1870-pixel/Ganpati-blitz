@@ -1067,9 +1067,11 @@ def on_disconnect():
 
             if room["status"] == "waiting":
                 room["players"].pop(sid, None)
-                if len(room["players"]) == 0:
+                created_age = time.time() - room.get("created_at", 0)
+                # Keep room open for at least 90s to allow host to enter waiting room or reconnect
+                if len(room["players"]) == 0 and created_age > 90:
                     rooms.pop(room_code, None)
-                else:
+                elif len(room["players"]) > 0:
                     emit("player_left", {
                         "player_id": player_id,
                         "message": "Opponent left."
@@ -1120,16 +1122,15 @@ def _start_disconnect_timer(room_code, player_id):
 
 @socketio.on("create_room")
 def on_create_room(data):
-    player_id = data.get("player_id")
-    display_name = data.get("display_name", "Player")
+    player_id = (data.get("player_id") or data.get("id") or "").strip()
+    display_name = (data.get("display_name") or data.get("name") or "Player").strip()
     game_id = data.get("game_id", "modak-rush")
     if not player_id:
         emit("error", {"message": "player_id required"})
         return
 
     if game_id not in VALID_GAME_IDS:
-        emit("error", {"message": "Invalid game_id"})
-        return
+        game_id = "modak-rush"
 
     room_code = generate_room_code()
     rooms[room_code] = {
@@ -1154,8 +1155,8 @@ def on_create_room(data):
 @socketio.on("join_room")
 def on_join_room(data):
     room_code = data.get("room_code", "").strip().upper()
-    player_id = data.get("player_id")
-    display_name = data.get("display_name", "Player")
+    player_id = (data.get("player_id") or data.get("id") or "").strip()
+    display_name = (data.get("display_name") or data.get("name") or "Player").strip()
 
     if not player_id:
         emit("error", {"message": "player_id required"})
@@ -1166,17 +1167,21 @@ def on_join_room(data):
         emit("error", {"message": "Room not found. Check the code and try again."})
         return
 
-    if room["status"] != "waiting":
+    if room["status"] not in ("waiting", "ready"):
         emit("error", {"message": "Room is not accepting players."})
-        return
-
-    if len(room["players"]) >= 2:
-        emit("error", {"message": "Room is full."})
         return
 
     existing_pids = list(room["players"].values())
     if player_id in existing_pids:
+        # Re-link current SID to this player_id
+        old_sids = [s for s, pid in list(room["players"].items()) if pid == player_id]
+        for s in old_sids:
+            room["players"].pop(s, None)
+        room["players"][request.sid] = player_id
+        if display_name:
+            room["player_names"][player_id] = display_name
         join_room(room_code)
+
         players_info = []
         for sid, pid in room["players"].items():
             players_info.append({
@@ -1188,7 +1193,17 @@ def on_join_room(data):
             "room_code": room_code,
             "players": players_info,
             "game_id": room.get("game_id", "modak-rush"),
-        })
+        }, room=room_code)
+        emit("room_state", {
+            "room_code": room_code,
+            "players": players_info,
+            "game_id": room.get("game_id", "modak-rush"),
+            "status": room["status"],
+        }, room=room_code)
+        return
+
+    if len(room["players"]) >= 2:
+        emit("error", {"message": "Room is full."})
         return
 
     room["players"][request.sid] = player_id
@@ -1201,12 +1216,19 @@ def on_join_room(data):
         players_info.append({
             "player_id": pid,
             "display_name": room["player_names"].get(pid, "Player"),
+            "ready": room["ready"].get(pid, False),
         })
 
     emit("player_joined", {
         "room_code": room_code,
         "players": players_info,
         "game_id": room.get("game_id", "modak-rush"),
+    }, room=room_code)
+    emit("room_state", {
+        "room_code": room_code,
+        "players": players_info,
+        "game_id": room.get("game_id", "modak-rush"),
+        "status": room["status"],
     }, room=room_code)
 
 

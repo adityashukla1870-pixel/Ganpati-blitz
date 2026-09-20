@@ -15,13 +15,13 @@ let socket = null
 export const getSocket = () => {
   if (!socket) {
     socket = io(SOCKET_URL, {
-      transports: ['websocket', 'polling'],
+      transports: ['polling', 'websocket'],
       autoConnect: true,
       reconnection: true,
-      reconnectionAttempts: 10,
+      reconnectionAttempts: 20,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
-      timeout: 10000,
+      timeout: 30000,
     })
   }
   if (!socket.connected) {
@@ -36,6 +36,12 @@ export const connectSocket = () => {
     s.connect()
   }
   return s
+}
+
+export const warmUpBackend = () => {
+  try {
+    fetch(`${SOCKET_URL}/api/health`, { method: 'GET', mode: 'cors' }).catch(() => {})
+  } catch (_) {}
 }
 
 export const disconnectSocket = () => {

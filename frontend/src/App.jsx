@@ -24,6 +24,7 @@ import QuickMatchPage from './pages/QuickMatchPage'
 import MatchHistoryPage from './pages/MatchHistoryPage'
 import Leaderboard from './pages/Leaderboard'
 import { getSoundEnabled, setSoundEnabled } from './utils/storage'
+import { warmUpBackend } from './services/socket'
 
 const ModakRush = lazy(() => import('./pages/ModakRush'))
 const DiyaDash = lazy(() => import('./games/diyaDash/DiyaDash'))
@@ -86,6 +87,7 @@ export default function App() {
   })
 
   useEffect(() => {
+    warmUpBackend()
     const saved = localStorage.getItem('ganpati_player')
     if (saved) {
       try {
@@ -184,8 +186,8 @@ export default function App() {
 
             {/* Multiplayer Flow */}
             <Route path="/multiplayer" element={<MultiplayerPage player={player} />} />
-            <Route path="/multiplayer/friend" element={<FriendRoomPage player={player} />} />
-            <Route path="/multiplayer/waiting" element={<WaitingRoomPage player={player} />} />
+            <Route path="/multiplayer/friend" element={<FriendRoomPage player={player} onPlayerSetup={handlePlayerSetup} />} />
+            <Route path="/multiplayer/waiting" element={<WaitingRoomPage player={player} onPlayerSetup={handlePlayerSetup} />} />
             <Route path="/multiplayer/game" element={<MultiplayerGame player={player} />} />
             <Route path="/multiplayer/result" element={<MatchResultPage player={player} />} />
             <Route path="/multiplayer/quick-match" element={<QuickMatchPage player={player} />} />

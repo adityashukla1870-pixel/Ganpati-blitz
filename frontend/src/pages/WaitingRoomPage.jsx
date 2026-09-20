@@ -4,11 +4,22 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, Copy, Check, Loader2, LogOut } from 'lucide-react'
 import { getSocket, connectSocket } from '../services/socket'
 
-export default function WaitingRoomPage() {
+export default function WaitingRoomPage({ player: playerProp }) {
   const navigate = useNavigate()
   const location = useLocation()
-  const roomCode = location.state?.room_code || ''
-  const [player, setPlayer] = useState(null)
+  const roomCode = (location.state?.room_code || sessionStorage.getItem('last_room_code') || '').trim().toUpperCase()
+  const [player, setPlayer] = useState(() => {
+    if (playerProp) return playerProp
+    const stored = localStorage.getItem('ganpati_player')
+    if (stored) {
+      try {
+        return JSON.parse(stored)
+      } catch (_) {
+        return null
+      }
+    }
+    return null
+  })
   const [players, setPlayers] = useState([])
   const [ready, setReady] = useState(false)
   const [countdown, setCountdown] = useState(null)
@@ -17,9 +28,8 @@ export default function WaitingRoomPage() {
   const [error, setError] = useState('')
 
   useEffect(() => {
-    const stored = localStorage.getItem('ganpati_player')
-    if (stored) setPlayer(JSON.parse(stored))
-  }, [])
+    if (playerProp) setPlayer(playerProp)
+  }, [playerProp])
 
   useEffect(() => {
     if (!roomCode) {
@@ -82,11 +92,12 @@ export default function WaitingRoomPage() {
     }
 
     const emitJoin = () => {
-      if (player?.player_id) {
+      const pid = player?.player_id || player?.id
+      if (pid) {
         socket.emit('join_room', {
           room_code: roomCode,
-          player_id: player.player_id,
-          display_name: player.display_name,
+          player_id: pid,
+          display_name: player.display_name || player.name || 'Player',
         })
       }
     }
@@ -138,19 +149,22 @@ export default function WaitingRoomPage() {
 
   const handleReady = useCallback(() => {
     const socket = getSocket()
+    const pid = player?.player_id || player?.id
     socket.emit('player_ready', {
       room_code: roomCode,
-      player_id: player?.player_id,
+      player_id: pid,
     })
     setReady(true)
   }, [roomCode, player])
 
   const handleLeave = useCallback(() => {
     const socket = getSocket()
+    const pid = player?.player_id || player?.id
     socket.emit('leave_room', {
       room_code: roomCode,
-      player_id: player?.player_id,
+      player_id: pid,
     })
+    sessionStorage.removeItem('last_room_code')
     navigate('/multiplayer')
   }, [roomCode, player, navigate])
 
