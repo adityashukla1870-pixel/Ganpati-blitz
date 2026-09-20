@@ -64,18 +64,18 @@ def award_xp(db, player_id, amount, source, source_id):
 
 
 ACHIEVEMENTS = [
-    {"id": "first-play", "name": "First Play", "description": "Complete your first game."},
-    {"id": "modak-master", "name": "Modak Master", "description": "Reach 1,000 points in Modak Rush."},
-    {"id": "speed-demon", "name": "Speed Demon", "description": "Complete a Mushak Maze run in under 30 seconds."},
-    {"id": "pattern-pro", "name": "Pattern Pro", "description": "Complete 10 Rangoli Rush rounds."},
-    {"id": "arcade-explorer", "name": "Arcade Explorer", "description": "Play all six games."},
-    {"id": "multiplayer-warrior", "name": "Multiplayer Warrior", "description": "Complete your first multiplayer match."},
-    {"id": "friendly-competitor", "name": "Friendly Competitor", "description": "Complete five multiplayer matches."},
-    {"id": "memory-master", "name": "Memory Master", "description": "Reach level 5 in Diya Dash."},
-    {"id": "rhythm-star", "name": "Rhythm Star", "description": "Score 90% accuracy in Dhol Battle."},
-    {"id": "logic-legend", "name": "Logic Legend", "description": "Answer 10 Ganpati Logic questions correctly."},
-    {"id": "blitz-completed", "name": "Blitz Completed", "description": "Finish your first Blitz Mix."},
-    {"id": "daily-devotee", "name": "Daily Devotee", "description": "Complete daily challenges on three separate days."},
+    {"id": "first-play", "name": "First Play", "description": "Complete your first game.", "icon": "🎮"},
+    {"id": "modak-master", "name": "Modak Master", "description": "Reach 1,000 points in Modak Rush.", "icon": "🥟"},
+    {"id": "speed-demon", "name": "Speed Demon", "description": "Complete a Mushak Maze run in under 30 seconds.", "icon": "⚡"},
+    {"id": "pattern-pro", "name": "Pattern Pro", "description": "Complete 10 Rangoli Rush rounds.", "icon": "🎨"},
+    {"id": "arcade-explorer", "name": "Arcade Explorer", "description": "Play all six games.", "icon": "🧭"},
+    {"id": "multiplayer-warrior", "name": "Multiplayer Warrior", "description": "Complete your first multiplayer match.", "icon": "⚔️"},
+    {"id": "friendly-competitor", "name": "Friendly Competitor", "description": "Complete five multiplayer matches.", "icon": "🤝"},
+    {"id": "memory-master", "name": "Memory Master", "description": "Reach level 5 in Diya Dash.", "icon": "🪔"},
+    {"id": "rhythm-star", "name": "Rhythm Star", "description": "Score 90% accuracy in Dhol Battle.", "icon": "🥁"},
+    {"id": "logic-legend", "name": "Logic Legend", "description": "Answer 10 Ganpati Logic questions correctly.", "icon": "🧠"},
+    {"id": "blitz-completed", "name": "Blitz Completed", "description": "Finish your first Blitz Mix.", "icon": "✨"},
+    {"id": "daily-devotee", "name": "Daily Devotee", "description": "Complete daily challenges on three separate days.", "icon": "📅"},
 ]
 
 

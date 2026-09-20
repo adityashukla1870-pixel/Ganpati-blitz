@@ -179,7 +179,7 @@ export default function App() {
             <Route path="/leaderboard" element={<Leaderboard />} />
             <Route path="/leaderboard/:gameId" element={<Leaderboard />} />
             <Route path="/daily-challenge" element={<DailyChallenge />} />
-            <Route path="/profile" element={<ProfilePage player={player} />} />
+            <Route path="/profile" element={<ProfilePage player={player} onPlayerSetup={handlePlayerSetup} />} />
             <Route path="/settings" element={<Settings onLogout={handleLogout} />} />
             <Route path="/player" element={<PlayerSetupPage onSetup={handlePlayerSetup} />} />
             <Route path="/achievements" element={<Achievements />} />

@@ -79,6 +79,11 @@ export const getProfile = async (playerId) => {
   return res.data
 }
 
+export const updatePlayerAvatar = async (playerId, avatar) => {
+  const res = await api.post(`/api/player/${playerId}/avatar`, { avatar })
+  return res.data
+}
+
 export const getProgression = async (playerId) => {
   const res = await api.get(`/api/progression/${playerId}`)
   return res.data

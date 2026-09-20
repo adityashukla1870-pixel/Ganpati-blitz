@@ -440,6 +440,24 @@ def login_player():
     return jsonify(serialize_player_profile(db, existing, is_existing=True)), 200
 
 
+@app.route("/api/player/<player_id>/avatar", methods=["POST", "PATCH"])
+def update_player_avatar(player_id):
+    data = request.get_json(silent=True) or {}
+    avatar = data.get("avatar", "🪷").strip()
+    if not avatar:
+        return jsonify({"error": "Avatar is required"}), 400
+
+    db, err = get_db()
+    if err:
+        return jsonify({"error": err}), 503
+
+    result = db.players.update_one({"player_id": player_id}, {"$set": {"avatar": avatar}})
+    if result.matched_count == 0:
+        return jsonify({"error": "Player not found"}), 404
+
+    return jsonify({"message": "Avatar updated successfully", "avatar": avatar}), 200
+
+
 VALID_GAME_IDS = ["modak-rush", "diya-dash", "dhol-battle", "rangoli-rush", "mushak-maze", "ganpati-logic", "blitz-mix"]
 
 GAME_SCORE_LIMITS = {
@@ -966,6 +984,7 @@ def get_match_history(player_id):
             "opponent_score": opp_score,
             "rating_before": mp.get("rating_before", 1000),
             "rating_after": mp.get("rating_after", 1000),
+            "rating_change": mp.get("rating_after", 1000) - mp.get("rating_before", 1000),
             "mode": match_doc.get("mode", "quick_match"),
             "created_at": match_doc.get("created_at", datetime.utcnow()).isoformat()
         })
@@ -1590,6 +1609,28 @@ def _save_match_to_db(match_id):
             {"$set": mp_doc},
             upsert=True
         )
+
+        # Award XP for multiplayer match
+        match_xp = 35 if res == "win" else 20 if res == "draw" else 15
+        award_xp(db, pid, match_xp, "multiplayer_match", f"{match_id}:{pid}")
+
+        # Check and award multiplayer achievements
+        try:
+            total_mp = db.match_players.count_documents({"player_id": pid})
+            if total_mp >= 1:
+                db.player_achievements.update_one(
+                    {"player_id": pid, "achievement_id": "multiplayer-warrior"},
+                    {"$setOnInsert": {"player_id": pid, "achievement_id": "multiplayer-warrior", "unlocked_at": datetime.utcnow()}},
+                    upsert=True
+                )
+            if total_mp >= 5:
+                db.player_achievements.update_one(
+                    {"player_id": pid, "achievement_id": "friendly-competitor"},
+                    {"$setOnInsert": {"player_id": pid, "achievement_id": "friendly-competitor", "unlocked_at": datetime.utcnow()}},
+                    upsert=True
+                )
+        except Exception:
+            pass
 
 
 def _emit_results(match_id):
