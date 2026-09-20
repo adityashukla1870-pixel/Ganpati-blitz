@@ -56,7 +56,20 @@ export default function PlayerSetup({ onSubmit }) {
         setErrors({ submit: data.error || 'Failed to create player' })
       }
     } catch (err) {
-      setErrors({ submit: 'Network error. Please try again.' })
+      // Offline fallback: allow player creation locally so games can be played immediately
+      const localId = `player_${Date.now()}_${Math.random().toString(36).slice(2, 7)}`
+      const localData = {
+        player_id: localId,
+        display_name: name.trim(),
+        campus: finalCampus,
+        avatar: '🪷',
+        level: 1,
+        xp: 0,
+        universal_points: 0,
+        created_at: new Date().toISOString(),
+      }
+      localStorage.setItem('ganpati_player', JSON.stringify(localData))
+      onSubmit?.(localData)
     } finally {
       setLoading(false)
     }

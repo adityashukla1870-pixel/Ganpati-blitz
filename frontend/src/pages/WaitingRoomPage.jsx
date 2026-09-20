@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback } from 'react'
 import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, Copy, Check, Loader2, LogOut } from 'lucide-react'
-import { getSocket } from '../services/socket'
+import { getSocket, connectSocket } from '../services/socket'
 
 export default function WaitingRoomPage() {
   const navigate = useNavigate()
@@ -27,7 +27,7 @@ export default function WaitingRoomPage() {
       return
     }
 
-    const socket = getSocket()
+    const socket = connectSocket()
 
     const onRoomState = (data) => {
       setPlayers(data.players || [])
@@ -77,11 +77,25 @@ export default function WaitingRoomPage() {
       setError(data.message || 'An error occurred')
     }
 
-    socket.emit('join_room', {
-      room_code: roomCode,
-      player_id: player?.player_id,
-      display_name: player?.display_name,
-    })
+    const onConnectError = () => {
+      setError('Connection to multiplayer room lost. Retrying...')
+    }
+
+    const emitJoin = () => {
+      if (player?.player_id) {
+        socket.emit('join_room', {
+          room_code: roomCode,
+          player_id: player.player_id,
+          display_name: player.display_name,
+        })
+      }
+    }
+
+    if (socket.connected) {
+      emitJoin()
+    } else {
+      socket.once('connect', emitJoin)
+    }
 
     socket.on('room_state', onRoomState)
     socket.on('player_joined', onPlayerJoined)
@@ -90,6 +104,7 @@ export default function WaitingRoomPage() {
     socket.on('start_countdown', onStartCountdown)
     socket.on('game_start', onGameStart)
     socket.on('error', onError)
+    socket.on('connect_error', onConnectError)
 
     return () => {
       socket.off('room_state', onRoomState)
@@ -99,6 +114,7 @@ export default function WaitingRoomPage() {
       socket.off('start_countdown', onStartCountdown)
       socket.off('game_start', onGameStart)
       socket.off('error', onError)
+      socket.off('connect_error', onConnectError)
     }
   }, [roomCode, navigate, player])
 

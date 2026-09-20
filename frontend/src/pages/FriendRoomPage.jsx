@@ -1,18 +1,21 @@
-import { useState, useEffect } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { useState, useEffect, useRef } from 'react'
+import { useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowLeft, Copy, Check, Users, LogIn, Plus, AlertCircle } from 'lucide-react'
-import { getSocket } from '../services/socket'
+import { ArrowLeft, Copy, Check, Users, LogIn, Plus, AlertCircle, RefreshCw, Wifi, WifiOff } from 'lucide-react'
+import { getSocket, connectSocket, CONNECTION_STATES } from '../services/socket'
 
 export default function FriendRoomPage() {
   const navigate = useNavigate()
-  const [tab, setTab] = useState('create')
+  const [searchParams] = useSearchParams()
+  const [tab, setTab] = useState(() => searchParams.get('mode') === 'join' ? 'join' : 'create')
   const [roomCode, setRoomCode] = useState('')
   const [joinCode, setJoinCode] = useState('')
   const [copied, setCopied] = useState(false)
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [player, setPlayer] = useState(null)
+  const [socketConnected, setSocketConnected] = useState(false)
+  const requestTimeoutRef = useRef(null)
 
   useEffect(() => {
     const stored = localStorage.getItem('ganpati_player')
@@ -20,14 +23,42 @@ export default function FriendRoomPage() {
   }, [])
 
   useEffect(() => {
-    const socket = getSocket()
+    const paramMode = searchParams.get('mode')
+    if (paramMode === 'join' || paramMode === 'create') {
+      setTab(paramMode)
+    }
+  }, [searchParams])
+
+  useEffect(() => {
+    const socket = connectSocket()
+    if (socket.connected) setSocketConnected(true)
+
+    const onConnect = () => {
+      setSocketConnected(true)
+      setError('')
+    }
+
+    const onDisconnect = () => {
+      setSocketConnected(false)
+    }
+
+    const onConnectError = () => {
+      setSocketConnected(false)
+      if (loading) {
+        setLoading(false)
+        if (requestTimeoutRef.current) clearTimeout(requestTimeoutRef.current)
+        setError('Cannot reach multiplayer server. Please verify backend service is running.')
+      }
+    }
 
     const onRoomCreated = (data) => {
+      if (requestTimeoutRef.current) clearTimeout(requestTimeoutRef.current)
       setLoading(false)
       setRoomCode(data.room_code)
     }
 
     const onPlayerJoined = (data) => {
+      if (requestTimeoutRef.current) clearTimeout(requestTimeoutRef.current)
       if (data.room_code && data.players && data.players.length >= 2) {
         setLoading(false)
         navigate('/multiplayer/waiting', { state: { room_code: data.room_code } })
@@ -35,20 +66,28 @@ export default function FriendRoomPage() {
     }
 
     const onError = (data) => {
+      if (requestTimeoutRef.current) clearTimeout(requestTimeoutRef.current)
       setLoading(false)
       setError(data.message || 'Something went wrong')
     }
 
+    socket.on('connect', onConnect)
+    socket.on('disconnect', onDisconnect)
+    socket.on('connect_error', onConnectError)
     socket.on('room_created', onRoomCreated)
     socket.on('player_joined', onPlayerJoined)
     socket.on('error', onError)
 
     return () => {
+      if (requestTimeoutRef.current) clearTimeout(requestTimeoutRef.current)
+      socket.off('connect', onConnect)
+      socket.off('disconnect', onDisconnect)
+      socket.off('connect_error', onConnectError)
       socket.off('room_created', onRoomCreated)
       socket.off('player_joined', onPlayerJoined)
       socket.off('error', onError)
     }
-  }, [navigate])
+  }, [navigate, loading])
 
   const handleCreate = () => {
     if (!player) {
@@ -57,7 +96,14 @@ export default function FriendRoomPage() {
     }
     setError('')
     setLoading(true)
-    const socket = getSocket()
+    const socket = connectSocket()
+
+    if (requestTimeoutRef.current) clearTimeout(requestTimeoutRef.current)
+    requestTimeoutRef.current = setTimeout(() => {
+      setLoading(false)
+      setError('Room creation timed out. Please check that the backend server is running.')
+    }, 8000)
+
     socket.emit('create_room', {
       player_id: player.player_id,
       display_name: player.display_name,
@@ -75,7 +121,14 @@ export default function FriendRoomPage() {
     }
     setError('')
     setLoading(true)
-    const socket = getSocket()
+    const socket = connectSocket()
+
+    if (requestTimeoutRef.current) clearTimeout(requestTimeoutRef.current)
+    requestTimeoutRef.current = setTimeout(() => {
+      setLoading(false)
+      setError('Room join timed out. Please verify code or backend status.')
+    }, 8000)
+
     socket.emit('join_room', {
       room_code: joinCode.trim().toUpperCase(),
       player_id: player.player_id,

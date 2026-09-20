@@ -1,9 +1,11 @@
-import React, { useEffect, useState, useMemo } from 'react'
+import React, { useEffect, useState, useMemo, useRef } from 'react'
 import { motion } from 'framer-motion'
 import { useLocation, useNavigate, Link } from 'react-router-dom'
 import { Trophy, RotateCcw, Home, Star, TrendingUp, TrendingDown, Gamepad2, Flag, Award, Sparkles, ArrowRight, Crown } from 'lucide-react'
 import { DIFFICULTY_TIERS } from '../config/difficulties'
 import { estimateUniversalPoints } from '../config/universalPoints'
+import { submitScore } from '../services/api'
+import { getPlayer } from '../utils/storage'
 
 const container = {
   hidden: { opacity: 0 },
@@ -138,6 +140,27 @@ export default function ResultScreen(props) {
       mpResult: result,
     })
   }, [props.universalPoints, state.universalPoints, gameId, score, stats, difficulty, isPersonalBest, result])
+
+  const submittedRef = useRef(false)
+  useEffect(() => {
+    if (submittedRef.current) return
+    submittedRef.current = true
+
+    const player = getPlayer()
+    if (player?.player_id && score > 0 && !result) {
+      submitScore(player.player_id, score, stats?.duration || 30, {
+        game_id: gameId,
+        difficulty,
+        stats,
+      })
+        .then((res) => {
+          if (res?.new_universal_points !== undefined) {
+            localStorage.setItem('ganpati_universal_points', String(res.new_universal_points))
+          }
+        })
+        .catch(() => {})
+    }
+  }, [gameId, score, difficulty, stats, result])
 
   const handlePlayAgain = () => {
     if (props.onPlayAgain) {

@@ -9,13 +9,16 @@ export const getSocket = () => {
   if (!socket) {
     socket = io(SOCKET_URL, {
       transports: ['websocket', 'polling'],
-      autoConnect: false,
+      autoConnect: true,
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 1000,
       reconnectionDelayMax: 5000,
       timeout: 10000,
     })
+  }
+  if (!socket.connected) {
+    socket.connect()
   }
   return socket
 }

@@ -204,12 +204,17 @@ def get_db():
     uri = get_sanitized_mongo_uri()
     try:
         if _client is None:
-            _client = MongoClient(
-                uri,
-                serverSelectionTimeoutMS=3000,
-                connectTimeoutMS=3000,
-                socketTimeoutMS=3000,
-            )
+            client_kwargs = {
+                "serverSelectionTimeoutMS": 5000,
+                "connectTimeoutMS": 5000,
+                "socketTimeoutMS": 5000,
+            }
+            try:
+                import certifi
+                client_kwargs["tlsCAFile"] = certifi.where()
+            except Exception:
+                pass
+            _client = MongoClient(uri, **client_kwargs)
         _client.admin.command("ping")
         _last_db_error = None
     except Exception as e:
