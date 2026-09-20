@@ -125,33 +125,33 @@ export const GAME_INSTRUCTIONS = {
 
   'mushak-maze': {
     id: 'mushak-maze',
-    title: 'Mushak Maze',
-    subtitle: 'Navigate Lord Ganesha\'s mouse through temple labyrinths',
+    title: 'Mushak Modak Chase',
+    subtitle: 'Classic arcade modak gobbling & palace cat chase',
     objective:
-      'Guide Mushak through twisting procedural stone corridors to reach the sacred sweet shrine before the temple timer expires.',
+      'Steer Mushak continuously through the temple labyrinth to gobble all Prasad Modaks, collect sacred offerings, and bonk cats during Super Divine Mode!',
     steps: [
       {
         step: 1,
-        title: 'Find the Modak Shrine',
-        desc: 'Traverse corridors from start to goal to clear each maze floor.',
+        title: 'Gobble Prasad Modaks',
+        desc: 'Glide continuously through temple corridors eating delicious yellow modaks (+10 pts each) to clear the stage.',
       },
       {
         step: 2,
-        title: 'Dodge Patrol Cats & Crumbly Floors',
-        desc: 'Evade roaming Bidal cats (colliding costs 1 life). Don\'t step on cracked tiles twice or they collapse!',
+        title: 'Evade the Palace Cats',
+        desc: 'Watch out for roaming guard cats (Marjar, Shyama, Pinku, Neelu). Touching a cat costs 1 life.',
       },
       {
         step: 3,
-        title: 'Pierce the Torchlight Fog',
-        desc: 'On Expert and Master tiers, navigate mystical darkness with only a torchlight aura illuminating nearby corridors.',
+        title: 'Super Divine Mushak Bonk',
+        desc: 'Chomp Golden Maha-Laddus (+50 pts) to turn invincible! Scared cats flee—chase and bonk them for combo points (+200, +400, +800, +1600 pts)!',
       },
     ],
     controls: {
-      desktop: 'Arrow keys or W, A, S, D to steer Mushak.',
-      mobile: 'Use the on-screen responsive D-Pad or swipe in direction of movement.',
+      desktop: 'Arrow keys or W, A, S, D to steer. Directions auto-buffer at intersections.',
+      mobile: 'Swipe in desired direction or tap the on-screen responsive D-Pad.',
     },
     scoring:
-      'Floor clear base score (+100 pts), remaining lives bonus (+25 each), and remaining time bonus (+5 pts/sec).',
+      'Modaks (+10 pts), Maha-Laddus (+50 pts), Temple Fruits (+200 to +500 pts), Cat Bonk Combos (+200/400/800/1600 pts), and Stage Clear bonus (+500 pts + time bonus).',
   },
 
   'ganpati-logic': {

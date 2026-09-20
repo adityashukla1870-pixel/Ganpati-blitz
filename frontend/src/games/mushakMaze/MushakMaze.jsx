@@ -1,127 +1,107 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MousePointer, Circle, Star, AlertTriangle, Volume2, VolumeX, Flame, Shield, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Pause } from 'lucide-react';
+import { Volume2, VolumeX, Pause, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import Countdown from '../../components/Countdown';
 import GameResult from '../shared/GameResult';
 import DifficultySelector from '../../components/DifficultySelector';
 import PauseOverlay from '../../components/PauseOverlay';
-import { getBestScore, setBestScore, getSoundEnabled, setSoundEnabled, getPlayer } from '../../utils/storage';
+import { getBestScore, getSoundEnabled, setSoundEnabled } from '../../utils/storage';
 import { getSelectedDifficulty, setSelectedDifficulty, recordGameResult, getTierBestScore } from '../../utils/progression';
 import { DIFFICULTY_TIERS } from '../../config/difficulties';
 import { submitScore } from '../../services/api';
 
-const CELL_TYPES = {
-  WALL: 0,
-  PATH: 1,
-  START: 2,
-  GOAL: 3,
-  BONUS: 4,
-  TRAP: 5,
-  CRACKED: 6,
-  HOLE: 7,
+// 19 cols x 21 rows symmetrical temple labyrinth
+const MAP_TEMPLATE = [
+  '###################',
+  '#........#........#',
+  '#O##.###.#.###.##O#',
+  '#.##.###.#.###.##.#',
+  '#.................#',
+  '#.##.#.#####.#.##.#',
+  '#....#...#...#....#',
+  '####.### # ###.####',
+  '   #.#   C   #.#   ',
+  '####.# ##-## #.####',
+  'T   .  #CCC#  .   T',
+  '####.# ##### #.####',
+  '   #.#       #.#   ',
+  '####.# ##### #.####',
+  '#........#........#',
+  '#.##.###.#.###.##.#',
+  '#O.#.....M.....#.O#',
+  '##.#.#.#####.#.#.##',
+  '#....#...#...#....#',
+  '#.######.#.######.#',
+  '###################',
+];
+
+const COLS = 19;
+const ROWS = 21;
+
+const CELL = {
+  EMPTY: 0,
+  WALL: 1,
+  DOT: 2,
+  POWER: 3,
+  DOOR: 4,
+  TUNNEL: 5,
 };
+
+const CAT_COLORS = [
+  { name: 'Marjar', color: '#FF8C00', homeX: 9, homeY: 8 },    // Orange - Direct chaser
+  { name: 'Shyama', color: '#A855F7', homeX: 8, homeY: 10 },   // Purple - Ambusher
+  { name: 'Pinku',  color: '#EC4899', homeX: 9, homeY: 10 },   // Pink - Flanker
+  { name: 'Neelu',  color: '#06B6D4', homeX: 10, homeY: 10 },  // Cyan - Wanderer
+];
 
 const TIER_PARAMS = {
   easy: {
-    gridSize: 9,
-    timeLimit: 60,
-    catsCount: 0,
-    hasFogOfWar: false,
-    fogRadius: 99,
-    label: 'Easy (9x9)',
+    label: 'Easy (1 Cat)',
+    catsCount: 1,
+    mushakSpeed: 4.2,
+    catSpeed: 2.8,
+    divineDuration: 10,
+    timeLimit: 90,
   },
   normal: {
-    gridSize: 11,
-    timeLimit: 55,
-    catsCount: 0,
-    hasFogOfWar: false,
-    fogRadius: 99,
-    label: 'Normal (11x11)',
+    label: 'Normal (2 Cats)',
+    catsCount: 2,
+    mushakSpeed: 4.6,
+    catSpeed: 3.3,
+    divineDuration: 8,
+    timeLimit: 80,
   },
   hard: {
-    gridSize: 13,
-    timeLimit: 50,
-    catsCount: 1,
-    hasFogOfWar: false,
-    fogRadius: 99,
-    label: 'Hard (13x13 Cat Patrol)',
+    label: 'Hard (3 Cats)',
+    catsCount: 3,
+    mushakSpeed: 5.0,
+    catSpeed: 3.8,
+    divineDuration: 6.5,
+    timeLimit: 70,
   },
   expert: {
-    gridSize: 15,
-    timeLimit: 45,
-    catsCount: 2,
-    hasFogOfWar: true,
-    fogRadius: 3.5,
-    label: 'Expert (15x15 Torchlight)',
+    label: 'Expert (4 Cats)',
+    catsCount: 4,
+    mushakSpeed: 5.4,
+    catSpeed: 4.3,
+    divineDuration: 5,
+    timeLimit: 60,
   },
   master: {
-    gridSize: 17,
-    timeLimit: 40,
-    catsCount: 3,
-    hasFogOfWar: true,
-    fogRadius: 2.5,
-    label: 'Master (17x17 Labyrinth)',
+    label: 'Master (4 Fast Cats)',
+    catsCount: 4,
+    mushakSpeed: 5.8,
+    catSpeed: 4.8,
+    divineDuration: 4,
+    timeLimit: 50,
   },
 };
 
-function generateProceduralMaze(N) {
-  const grid = Array(N)
-    .fill(null)
-    .map(() => Array(N).fill(CELL_TYPES.WALL));
-
-  function carve(x, y) {
-    grid[y][x] = CELL_TYPES.PATH;
-    const dirs = [
-      [0, -2],
-      [0, 2],
-      [-2, 0],
-      [2, 0],
-    ].sort(() => Math.random() - 0.5);
-
-    for (const [dx, dy] of dirs) {
-      const nx = x + dx;
-      const ny = y + dy;
-      if (nx > 0 && nx < N - 1 && ny > 0 && ny < N - 1 && grid[ny][nx] === CELL_TYPES.WALL) {
-        grid[y + dy / 2][x + dx / 2] = CELL_TYPES.PATH;
-        carve(nx, ny);
-      }
-    }
-  }
-
-  carve(1, 1);
-  grid[1][1] = CELL_TYPES.START;
-  grid[N - 2][N - 2] = CELL_TYPES.GOAL;
-
-  // Place bonuses (Laddus)
-  const bonusCount = Math.floor(N / 2);
-  let placed = 0;
-  while (placed < bonusCount) {
-    const x = Math.floor(Math.random() * (N - 2)) + 1;
-    const y = Math.floor(Math.random() * (N - 2)) + 1;
-    if (grid[y][x] === CELL_TYPES.PATH && (x !== 1 || y !== 1)) {
-      grid[y][x] = CELL_TYPES.BONUS;
-      placed++;
-    }
-  }
-
-  // Place crumbly traps
-  const trapCount = Math.floor(N / 3);
-  placed = 0;
-  while (placed < trapCount) {
-    const x = Math.floor(Math.random() * (N - 2)) + 1;
-    const y = Math.floor(Math.random() * (N - 2)) + 1;
-    if (grid[y][x] === CELL_TYPES.PATH && (x !== 1 || y !== 1)) {
-      grid[y][x] = CELL_TYPES.TRAP;
-      placed++;
-    }
-  }
-
-  return grid;
-}
-
 export default function MushakMaze({ player }) {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+
   const [difficulty, setDifficulty] = useState(() => {
     const p = searchParams.get('diff');
     return p && TIER_PARAMS[p] ? p : getSelectedDifficulty('mushak-maze');
@@ -130,310 +110,858 @@ export default function MushakMaze({ player }) {
   const tier = TIER_PARAMS[difficulty] || TIER_PARAMS.normal;
   const diffMultiplier = DIFFICULTY_TIERS[difficulty]?.multiplier || 1.5;
 
-  const navigate = useNavigate();
   const [gameState, setGameState] = useState(() => {
     return searchParams.get('autostart') === '1' ? 'countdown' : 'idle';
   });
   const [isPaused, setIsPaused] = useState(false);
-  const [maze, setMaze] = useState(() => generateProceduralMaze(tier.gridSize));
-  const [playerPos, setPlayerPos] = useState({ x: 1, y: 1 });
-  const [cats, setCats] = useState([]);
-  const [lives, setLives] = useState(3);
-  const [rawScore, setRawScore] = useState(0);
   const [score, setScore] = useState(0);
+  const [rawScore, setRawScore] = useState(0);
+  const [lives, setLives] = useState(3);
   const [timeLeft, setTimeLeft] = useState(tier.timeLimit);
-  const [mazesCompleted, setMazesCompleted] = useState(0);
-  const [bonusesCollected, setBonusesCollected] = useState(0);
+  const [stage, setStage] = useState(1);
+  const [divineTimeRemaining, setDivineTimeRemaining] = useState(0);
   const [bestScore, setBestScoreState] = useState(() => getTierBestScore('mushak-maze', difficulty) || getBestScore('mushak-maze') || 0);
   const [soundEnabled, setSoundEnabledState] = useState(() => getSoundEnabled());
   const [progressionResult, setProgressionResult] = useState(null);
 
-  const timerRef = useRef(null);
-  const catIntervalRef = useRef(null);
-  const rawScoreRef = useRef(0);
-  const statsRef = useRef({ bonuses: 0, mazes: 0 });
+  const canvasRef = useRef(null);
+  const gameLoopRef = useRef(null);
+  const audioCtxRef = useRef(null);
+  const timerIntervalRef = useRef(null);
 
+  // Mutable Game State Reference for 60fps loop
+  const engineRef = useRef({
+    grid: [],
+    dotsRemaining: 0,
+    mushak: {
+      x: 9,
+      y: 16,
+      dir: { x: 0, y: 0 },
+      nextDir: { x: 0, y: 0 },
+      speed: tier.mushakSpeed,
+      mouthAngle: 0.2,
+      mouthSpeed: 12,
+    },
+    cats: [],
+    divineTimer: 0,
+    divineTotal: tier.divineDuration,
+    catCombo: 0,
+    particles: [],
+    popups: [],
+    fruit: null,
+    fruitTimer: 15,
+    lastTime: performance.now(),
+    lives: 3,
+    score: 0,
+    rawScore: 0,
+    stage: 1,
+    gameOver: false,
+    cleared: false,
+    resetPause: 0,
+  });
+
+  // Sound Synthesizer using Web Audio API
   const playSound = useCallback(
     (type) => {
       if (!soundEnabled) return;
       try {
-        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        if (!audioCtxRef.current) {
+          audioCtxRef.current = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        const ctx = audioCtxRef.current;
+        if (ctx.state === 'suspended') {
+          ctx.resume();
+        }
+
+        const now = ctx.currentTime;
         const osc = ctx.createOscillator();
         const gain = ctx.createGain();
         osc.connect(gain);
         gain.connect(ctx.destination);
 
-        if (type === 'bonus') {
+        if (type === 'munch') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(450, now);
+          osc.frequency.exponentialRampToValueAtTime(800, now + 0.06);
+          gain.gain.setValueAtTime(0.08, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.07);
+          osc.start(now);
+          osc.stop(now + 0.07);
+        } else if (type === 'divine') {
           osc.type = 'sine';
-          osc.frequency.setValueAtTime(523, ctx.currentTime);
-          osc.frequency.exponentialRampToValueAtTime(1046, ctx.currentTime + 0.15);
-          gain.gain.setValueAtTime(0.2, ctx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.2);
-          osc.start();
-          osc.stop(ctx.currentTime + 0.2);
-        } else if (type === 'goal') {
+          osc.frequency.setValueAtTime(587.33, now);
+          osc.frequency.exponentialRampToValueAtTime(1174.66, now + 0.35);
+          gain.gain.setValueAtTime(0.2, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+          osc.start(now);
+          osc.stop(now + 0.4);
+        } else if (type === 'bonk') {
           osc.type = 'sine';
-          osc.frequency.setValueAtTime(440, ctx.currentTime);
-          osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.3);
-          gain.gain.setValueAtTime(0.25, ctx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.35);
-          osc.start();
-          osc.stop(ctx.currentTime + 0.35);
-        } else if (type === 'cat' || type === 'trap') {
+          osc.frequency.setValueAtTime(700, now);
+          osc.frequency.exponentialRampToValueAtTime(1400, now + 0.15);
+          gain.gain.setValueAtTime(0.22, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+          osc.start(now);
+          osc.stop(now + 0.25);
+        } else if (type === 'fruit') {
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(659.25, now);
+          osc.frequency.setValueAtTime(880, now + 0.08);
+          gain.gain.setValueAtTime(0.18, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.25);
+          osc.start(now);
+          osc.stop(now + 0.25);
+        } else if (type === 'hit') {
           osc.type = 'sawtooth';
-          osc.frequency.setValueAtTime(150, ctx.currentTime);
-          gain.gain.setValueAtTime(0.18, ctx.currentTime);
-          gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
-          osc.start();
-          osc.stop(ctx.currentTime + 0.3);
+          osc.frequency.setValueAtTime(280, now);
+          osc.frequency.exponentialRampToValueAtTime(80, now + 0.35);
+          gain.gain.setValueAtTime(0.25, now);
+          gain.gain.exponentialRampToValueAtTime(0.001, now + 0.4);
+          osc.start(now);
+          osc.stop(now + 0.4);
+        } else if (type === 'clear') {
+          const notes = [523.25, 659.25, 783.99, 1046.5];
+          notes.forEach((freq, idx) => {
+            const o = ctx.createOscillator();
+            const g = ctx.createGain();
+            o.connect(g);
+            g.connect(ctx.destination);
+            o.type = 'sine';
+            o.frequency.setValueAtTime(freq, now + idx * 0.1);
+            g.gain.setValueAtTime(0.15, now + idx * 0.1);
+            g.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.1 + 0.25);
+            o.start(now + idx * 0.1);
+            o.stop(now + idx * 0.1 + 0.25);
+          });
         }
       } catch (e) {}
     },
     [soundEnabled]
   );
 
+  const initBoard = useCallback(() => {
+    const grid = [];
+    let dots = 0;
+    for (let r = 0; r < ROWS; r++) {
+      grid[r] = [];
+      for (let c = 0; c < COLS; c++) {
+        const ch = MAP_TEMPLATE[r][c];
+        if (ch === '#') grid[r][c] = CELL.WALL;
+        else if (ch === '.') {
+          grid[r][c] = CELL.DOT;
+          dots++;
+        } else if (ch === 'O') {
+          grid[r][c] = CELL.POWER;
+          dots++;
+        } else if (ch === '-') grid[r][c] = CELL.DOOR;
+        else if (ch === 'T') grid[r][c] = CELL.TUNNEL;
+        else grid[r][c] = CELL.EMPTY;
+      }
+    }
+
+    const spawnedCats = [];
+    for (let i = 0; i < tier.catsCount; i++) {
+      const def = CAT_COLORS[i % CAT_COLORS.length];
+      spawnedCats.push({
+        id: i,
+        name: def.name,
+        color: def.color,
+        x: def.homeX,
+        y: def.homeY,
+        dir: { x: 0, y: i === 0 ? -1 : 0 },
+        speed: tier.catSpeed,
+        state: i === 0 ? 'CHASE' : 'HOUSE',
+        houseTimer: i * 3.5,
+        target: { x: 9, y: 16 },
+      });
+    }
+
+    return { grid, dots, spawnedCats };
+  }, [tier]);
+
   const handleDifficultyChange = (newTier) => {
     setDifficulty(newTier);
     setSelectedDifficulty('mushak-maze', newTier);
-    const cfg = TIER_PARAMS[newTier] || TIER_PARAMS.normal;
-    setMaze(generateProceduralMaze(cfg.gridSize));
     setBestScoreState(getTierBestScore('mushak-maze', newTier));
   };
 
-  const spawnCatsForMaze = (grid, count) => {
-    const N = grid.length;
-    const spawned = [];
-    while (spawned.length < count) {
-      const cx = Math.floor(Math.random() * (N - 4)) + 3;
-      const cy = Math.floor(Math.random() * (N - 4)) + 3;
-      if (grid[cy][cx] === CELL_TYPES.PATH && !spawned.some((c) => c.x === cx && c.y === cy)) {
-        spawned.push({ id: spawned.length, x: cx, y: cy, dir: [0, 1] });
-      }
-    }
-    return spawned;
-  };
-
-  const startNewMazeLevel = useCallback(() => {
-    const newGrid = generateProceduralMaze(tier.gridSize);
-    setMaze(newGrid);
-    setPlayerPos({ x: 1, y: 1 });
-    if (tier.catsCount > 0) {
-      setCats(spawnCatsForMaze(newGrid, tier.catsCount));
-    } else {
-      setCats([]);
-    }
-  }, [tier]);
-
   const handleGameOver = useCallback(() => {
-    if (timerRef.current) clearInterval(timerRef.current);
-    if (catIntervalRef.current) clearInterval(catIntervalRef.current);
+    if (timerIntervalRef.current) clearInterval(timerIntervalRef.current);
+    if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
 
-    const finalScore = Math.round(rawScoreRef.current * diffMultiplier);
+    const eng = engineRef.current;
+    eng.gameOver = true;
+    const finalScore = Math.round(eng.rawScore * diffMultiplier);
+
     const progRes = recordGameResult('mushak-maze', difficulty, finalScore);
     setProgressionResult(progRes);
-
     setBestScoreState(Math.max(finalScore, bestScore));
     setScore(finalScore);
 
     if (player?.player_id) {
-      submitScore(player.player_id, finalScore, tier.timeLimit - timeLeft, { game_id: 'mushak-maze' }).catch(() => {});
+      submitScore(player.player_id, finalScore, tier.timeLimit - timeLeft, {
+        game_id: 'mushak-maze',
+        difficulty,
+        mazes_completed: eng.stage,
+      }).catch(() => {});
     }
+
     setGameState('gameover');
-  }, [diffMultiplier, difficulty, bestScore, player, tier.timeLimit, timeLeft]);
+  }, [bestScore, diffMultiplier, difficulty, player, tier.timeLimit, timeLeft]);
 
-  // Movement logic
-  const movePlayer = useCallback(
-    (dx, dy) => {
-      if (gameState !== 'playing') return;
+  const requestDirection = useCallback((dx, dy) => {
+    const eng = engineRef.current;
+    if (eng.gameOver || gameState !== 'playing' || isPaused) return;
 
-      setPlayerPos((prev) => {
-        const nx = prev.x + dx;
-        const ny = prev.y + dy;
-        const N = tier.gridSize;
+    if (dx === -eng.mushak.dir.x && dy === -eng.mushak.dir.y && (dx !== 0 || dy !== 0)) {
+      eng.mushak.dir = { x: dx, y: dy };
+      eng.mushak.nextDir = { x: dx, y: dy };
+      return;
+    }
+    eng.mushak.nextDir = { x: dx, y: dy };
+  }, [gameState, isPaused]);
 
-        if (nx < 0 || nx >= N || ny < 0 || ny >= N) return prev;
+  const touchStartRef = useRef({ x: 0, y: 0, time: 0 });
+  const handleTouchStart = (e) => {
+    const touch = e.touches[0];
+    touchStartRef.current = { x: touch.clientX, y: touch.clientY, time: Date.now() };
+  };
 
-        const cell = maze[ny][nx];
-        if (cell === CELL_TYPES.WALL || cell === CELL_TYPES.HOLE) return prev;
+  const handleTouchEnd = (e) => {
+    const touch = e.changedTouches[0];
+    const dx = touch.clientX - touchStartRef.current.x;
+    const dy = touch.clientY - touchStartRef.current.y;
+    const dist = Math.hypot(dx, dy);
+    if (dist < 20) return;
 
-        // Laddus bonus
-        if (cell === CELL_TYPES.BONUS) {
-          playSound('bonus');
-          rawScoreRef.current += 60;
-          setBonusesCollected((b) => b + 1);
-          statsRef.current.bonuses++;
-          setMaze((m) => {
-            const next = m.map((r) => [...r]);
-            next[ny][nx] = CELL_TYPES.PATH;
-            return next;
-          });
-        }
-        // Crumbly Floor Traps
-        else if (cell === CELL_TYPES.TRAP) {
-          playSound('trap');
-          setMaze((m) => {
-            const next = m.map((r) => [...r]);
-            next[ny][nx] = CELL_TYPES.CRACKED;
-            return next;
-          });
-        } else if (cell === CELL_TYPES.CRACKED) {
-          playSound('trap');
-          setMaze((m) => {
-            const next = m.map((r) => [...r]);
-            next[ny][nx] = CELL_TYPES.HOLE;
-            return next;
-          });
-        }
-        // Golden Goal Modak
-        else if (cell === CELL_TYPES.GOAL) {
-          playSound('goal');
-          const timeBonus = Math.max(10, timeLeft * 4);
-          rawScoreRef.current += 250 + timeBonus;
-          setMazesCompleted((m) => m + 1);
-          statsRef.current.mazes++;
-          startNewMazeLevel();
-          return { x: 1, y: 1 };
-        }
+    if (Math.abs(dx) > Math.abs(dy)) {
+      requestDirection(dx > 0 ? 1 : -1, 0);
+    } else {
+      requestDirection(0, dy > 0 ? 1 : -1);
+    }
+  };
 
-        const total = Math.round(rawScoreRef.current * diffMultiplier);
-        setRawScore(rawScoreRef.current);
-        setScore(total);
-
-        // Check if player walked into a cat
-        if (cats.some((c) => c.x === nx && c.y === ny)) {
-          playSound('cat');
-          setLives((l) => {
-            const nextL = l - 1;
-            if (nextL <= 0) setTimeout(() => handleGameOver(), 200);
-            return nextL;
-          });
-        }
-
-        return { x: nx, y: ny };
-      });
-    },
-    [gameState, tier.gridSize, maze, playSound, timeLeft, diffMultiplier, startNewMazeLevel, cats, handleGameOver]
-  );
-
-  // Cat Patrol Movement AI
-  useEffect(() => {
-    if (gameState !== 'playing' || tier.catsCount === 0) return;
-
-    catIntervalRef.current = setInterval(() => {
-      setCats((prevCats) =>
-        prevCats.map((cat) => {
-          const dirs = [
-            [0, -1],
-            [0, 1],
-            [-1, 0],
-            [1, 0],
-          ];
-          const validDirs = dirs.filter(([dx, dy]) => {
-            const nx = cat.x + dx;
-            const ny = cat.y + dy;
-            return (
-              nx > 0 &&
-              nx < tier.gridSize - 1 &&
-              ny > 0 &&
-              ny < tier.gridSize - 1 &&
-              maze[ny][nx] !== CELL_TYPES.WALL &&
-              maze[ny][nx] !== CELL_TYPES.HOLE
-            );
-          });
-
-          if (validDirs.length === 0) return cat;
-
-          // Bias towards player
-          let chosen = validDirs[Math.floor(Math.random() * validDirs.length)];
-          const dxToPlayer = playerPos.x - cat.x;
-          const dyToPlayer = playerPos.y - cat.y;
-
-          for (const d of validDirs) {
-            if ((d[0] === Math.sign(dxToPlayer) && dxToPlayer !== 0) || (d[1] === Math.sign(dyToPlayer) && dyToPlayer !== 0)) {
-              if (Math.random() < 0.6) {
-                chosen = d;
-                break;
-              }
-            }
-          }
-
-          const nx = cat.x + chosen[0];
-          const ny = cat.y + chosen[1];
-
-          // Check collision with player
-          if (nx === playerPos.x && ny === playerPos.y) {
-            playSound('cat');
-            setLives((l) => {
-              const nextL = l - 1;
-              if (nextL <= 0) setTimeout(() => handleGameOver(), 200);
-              return nextL;
-            });
-          }
-
-          return { ...cat, x: nx, y: ny };
-        })
-      );
-    }, 700);
-
-    return () => clearInterval(catIntervalRef.current);
-  }, [gameState, tier.catsCount, tier.gridSize, maze, playerPos, playSound, handleGameOver]);
-
-  // Keyboard controls
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (gameState !== 'playing') return;
+      if (gameState !== 'playing' || isPaused) {
+        if (e.key === 'Escape' && gameState === 'playing') setIsPaused((p) => !p);
+        return;
+      }
+
       if (e.key === 'ArrowUp' || e.key === 'w' || e.key === 'W') {
         e.preventDefault();
-        movePlayer(0, -1);
+        requestDirection(0, -1);
       } else if (e.key === 'ArrowDown' || e.key === 's' || e.key === 'S') {
         e.preventDefault();
-        movePlayer(0, 1);
+        requestDirection(0, 1);
       } else if (e.key === 'ArrowLeft' || e.key === 'a' || e.key === 'A') {
         e.preventDefault();
-        movePlayer(-1, 0);
+        requestDirection(-1, 0);
       } else if (e.key === 'ArrowRight' || e.key === 'd' || e.key === 'D') {
         e.preventDefault();
-        movePlayer(1, 0);
+        requestDirection(1, 0);
+      } else if (e.key === 'Escape') {
+        setIsPaused(true);
       }
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [gameState, movePlayer]);
+  }, [gameState, isPaused, requestDirection]);
 
-  // Game timer
+  const handleStart = () => {
+    setGameState('countdown');
+    setRawScore(0);
+    setScore(0);
+    setTimeLeft(tier.timeLimit);
+    setLives(3);
+    setStage(1);
+    setDivineTimeRemaining(0);
+
+    const { grid, dots, spawnedCats } = initBoard();
+    const eng = engineRef.current;
+    eng.grid = grid;
+    eng.dotsRemaining = dots;
+    eng.mushak = {
+      x: 9,
+      y: 16,
+      dir: { x: 0, y: 0 },
+      nextDir: { x: -1, y: 0 },
+      speed: tier.mushakSpeed,
+      mouthAngle: 0.2,
+      mouthSpeed: 12,
+    };
+    eng.cats = spawnedCats;
+    eng.divineTimer = 0;
+    eng.divineTotal = tier.divineDuration;
+    eng.catCombo = 0;
+    eng.particles = [];
+    eng.popups = [];
+    eng.fruit = null;
+    eng.fruitTimer = 12;
+    eng.lives = 3;
+    eng.score = 0;
+    eng.rawScore = 0;
+    eng.stage = 1;
+    eng.gameOver = false;
+    eng.cleared = false;
+    eng.resetPause = 0;
+    eng.lastTime = performance.now();
+  };
+
+  const handleCountdownComplete = () => {
+    setGameState('playing');
+    engineRef.current.lastTime = performance.now();
+  };
+
   useEffect(() => {
-    if (gameState !== 'playing') return;
-    timerRef.current = setInterval(() => {
+    if (gameState !== 'playing' || isPaused) return;
+
+    timerIntervalRef.current = setInterval(() => {
       setTimeLeft((prev) => {
         if (prev <= 1) {
-          clearInterval(timerRef.current);
+          clearInterval(timerIntervalRef.current);
           handleGameOver();
           return 0;
         }
         return prev - 1;
       });
     }, 1000);
-    return () => clearInterval(timerRef.current);
-  }, [gameState, handleGameOver]);
 
-  const handleStart = () => {
-    setGameState('countdown');
-    setRawScore(0);
-    rawScoreRef.current = 0;
-    setScore(0);
-    setTimeLeft(tier.timeLimit);
-    setMazesCompleted(0);
-    setBonusesCollected(0);
-    setLives(3);
-    statsRef.current = { bonuses: 0, mazes: 0 };
-    startNewMazeLevel();
+    return () => clearInterval(timerIntervalRef.current);
+  }, [gameState, isPaused, handleGameOver]);
+
+  const isWall = (grid, col, row, isCat = false) => {
+    if (col < 0 || col >= COLS || row < 0 || row >= ROWS) return false;
+    const cell = grid[row][col];
+    if (cell === CELL.WALL) return true;
+    if (cell === CELL.DOOR && !isCat) return true;
+    return false;
   };
 
-  const handleCountdownComplete = () => {
-    setGameState('playing');
-  };
+  useEffect(() => {
+    if (gameState !== 'playing') return;
 
-  const cellSize = Math.min(36, Math.floor(340 / tier.gridSize));
+    let animId;
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+
+    const loop = (now) => {
+      animId = requestAnimationFrame(loop);
+      if (isPaused) {
+        engineRef.current.lastTime = now;
+        return;
+      }
+
+      const dt = Math.min((now - engineRef.current.lastTime) / 1000, 0.1);
+      engineRef.current.lastTime = now;
+
+      const eng = engineRef.current;
+      if (eng.gameOver) return;
+
+      if (eng.resetPause > 0) {
+        eng.resetPause -= dt;
+        renderCanvas(ctx, eng);
+        return;
+      }
+
+      if (eng.divineTimer > 0) {
+        eng.divineTimer = Math.max(0, eng.divineTimer - dt);
+        setDivineTimeRemaining(Math.ceil(eng.divineTimer));
+        if (eng.divineTimer === 0) {
+          eng.cats.forEach((c) => {
+            if (c.state === 'SCARED') c.state = 'CHASE';
+          });
+        }
+      }
+
+      eng.fruitTimer -= dt;
+      if (eng.fruitTimer <= 0 && !eng.fruit) {
+        const offerings = [
+          { name: 'Modak Thali', emoji: '🥮', points: 200, color: '#F59E0B' },
+          { name: 'Sacred Coconut', emoji: '🥥', points: 300, color: '#10B981' },
+          { name: 'Golden Mango', emoji: '🥭', points: 500, color: '#EAB308' },
+        ];
+        const pick = offerings[Math.floor(Math.random() * offerings.length)];
+        eng.fruit = { x: 9, y: 12, ...pick, life: 10 };
+        eng.fruitTimer = 22;
+      }
+      if (eng.fruit) {
+        eng.fruit.life -= dt;
+        if (eng.fruit.life <= 0) eng.fruit = null;
+      }
+
+      const m = eng.mushak;
+      m.mouthAngle += m.mouthSpeed * dt;
+
+      const atCenterX = Math.abs(m.x - Math.round(m.x)) < m.speed * dt * 0.85;
+      const atCenterY = Math.abs(m.y - Math.round(m.y)) < m.speed * dt * 0.85;
+
+      if ((atCenterX && m.nextDir.x === 0) || (atCenterY && m.nextDir.y === 0)) {
+        const curCol = Math.round(m.x);
+        const curRow = Math.round(m.y);
+        const targetCol = curCol + m.nextDir.x;
+        const targetRow = curRow + m.nextDir.y;
+
+        if (!isWall(eng.grid, targetCol, targetRow, false)) {
+          m.x = curCol;
+          m.y = curRow;
+          m.dir = { ...m.nextDir };
+        }
+      }
+
+      if (m.dir.x !== 0 || m.dir.y !== 0) {
+        const nextX = m.x + m.dir.x * m.speed * dt;
+        const nextY = m.y + m.dir.y * m.speed * dt;
+
+        if (Math.round(m.y) === 10) {
+          if (nextX < -0.5) m.x = COLS - 0.5;
+          else if (nextX > COLS - 0.5) m.x = -0.5;
+          else m.x = nextX;
+        } else {
+          const nextCol = Math.round(nextX + m.dir.x * 0.45);
+          const nextRow = Math.round(nextY + m.dir.y * 0.45);
+
+          if (isWall(eng.grid, nextCol, nextRow, false)) {
+            m.x = Math.round(m.x);
+            m.y = Math.round(m.y);
+            m.dir = { x: 0, y: 0 };
+          } else {
+            m.x = nextX;
+            m.y = nextY;
+          }
+        }
+      }
+
+      const mCol = Math.round(m.x);
+      const mRow = Math.round(m.y);
+      if (mCol >= 0 && mCol < COLS && mRow >= 0 && mRow < ROWS) {
+        const cell = eng.grid[mRow][mCol];
+        if (cell === CELL.DOT) {
+          eng.grid[mRow][mCol] = CELL.EMPTY;
+          eng.dotsRemaining--;
+          eng.rawScore += 10;
+          playSound('munch');
+        } else if (cell === CELL.POWER) {
+          eng.grid[mRow][mCol] = CELL.EMPTY;
+          eng.dotsRemaining--;
+          eng.rawScore += 50;
+          eng.divineTimer = eng.divineTotal;
+          eng.catCombo = 0;
+          eng.cats.forEach((c) => {
+            if (c.state !== 'EATEN') c.state = 'SCARED';
+          });
+          playSound('divine');
+
+          for (let p = 0; p < 12; p++) {
+            eng.particles.push({
+              x: mCol + 0.5,
+              y: mRow + 0.5,
+              vx: (Math.random() - 0.5) * 5,
+              vy: (Math.random() - 0.5) * 5,
+              color: '#FFD700',
+              life: 0.6,
+            });
+          }
+        }
+
+        if (eng.fruit && Math.hypot(m.x - eng.fruit.x, m.y - eng.fruit.y) < 0.6) {
+          eng.rawScore += eng.fruit.points;
+          eng.popups.push({
+            x: eng.fruit.x,
+            y: eng.fruit.y,
+            text: `+${eng.fruit.points}`,
+            color: eng.fruit.color,
+            life: 1.0,
+          });
+          playSound('fruit');
+          eng.fruit = null;
+        }
+
+        if (eng.dotsRemaining <= 0 && !eng.cleared) {
+          eng.cleared = true;
+          playSound('clear');
+          eng.rawScore += 500 + timeLeft * 10;
+          setTimeout(() => {
+            eng.stage++;
+            setStage(eng.stage);
+            const next = initBoard();
+            eng.grid = next.grid;
+            eng.dotsRemaining = next.dots;
+            eng.cats = next.spawnedCats;
+            eng.mushak.x = 9;
+            eng.mushak.y = 16;
+            eng.mushak.dir = { x: 0, y: 0 };
+            eng.mushak.nextDir = { x: -1, y: 0 };
+            eng.cleared = false;
+          }, 1200);
+        }
+      }
+
+      eng.score = Math.round(eng.rawScore * diffMultiplier);
+      setRawScore(eng.rawScore);
+      setScore(eng.score);
+
+      eng.cats.forEach((cat) => {
+        if (cat.state === 'HOUSE') {
+          cat.houseTimer -= dt;
+          cat.y = 10 + Math.sin(now * 0.005 + cat.id) * 0.25;
+          if (cat.houseTimer <= 0) {
+            cat.state = 'EXITING';
+          }
+          return;
+        }
+
+        if (cat.state === 'EXITING') {
+          cat.x += (9 - cat.x) * 4 * dt;
+          cat.y -= 2 * dt;
+          if (cat.y <= 8.0) {
+            cat.y = 8.0;
+            cat.state = 'CHASE';
+            cat.dir = { x: -1, y: 0 };
+          }
+          return;
+        }
+
+        if (cat.state === 'EATEN') {
+          const dx = 9 - cat.x;
+          const dy = 10 - cat.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist < 0.3) {
+            cat.state = 'CHASE';
+            cat.x = 9;
+            cat.y = 8;
+            cat.dir = { x: 0, y: -1 };
+          } else {
+            cat.x += (dx / dist) * 7.5 * dt;
+            cat.y += (dy / dist) * 7.5 * dt;
+          }
+          return;
+        }
+
+        const curSpeed = cat.state === 'SCARED' ? cat.speed * 0.55 : cat.speed;
+        const nextX = cat.x + cat.dir.x * curSpeed * dt;
+        const nextY = cat.y + cat.dir.y * curSpeed * dt;
+
+        if (Math.round(cat.y) === 10) {
+          if (nextX < -0.5) cat.x = COLS - 0.5;
+          else if (nextX > COLS - 0.5) cat.x = -0.5;
+          else cat.x = nextX;
+        } else {
+          cat.x = nextX;
+          cat.y = nextY;
+        }
+
+        const nearX = Math.abs(cat.x - Math.round(cat.x)) < curSpeed * dt * 0.9;
+        const nearY = Math.abs(cat.y - Math.round(cat.y)) < curSpeed * dt * 0.9;
+
+        if (nearX && nearY) {
+          const col = Math.round(cat.x);
+          const row = Math.round(cat.y);
+          cat.x = col;
+          cat.y = row;
+
+          const possibleDirs = [
+            { x: 0, y: -1 },
+            { x: 0, y: 1 },
+            { x: -1, y: 0 },
+            { x: 1, y: 0 },
+          ].filter((d) => {
+            if (d.x === -cat.dir.x && d.y === -cat.dir.y) return false;
+            return !isWall(eng.grid, col + d.x, row + d.y, true);
+          });
+
+          if (possibleDirs.length > 0) {
+            if (cat.state === 'SCARED') {
+              possibleDirs.sort((a, b) => {
+                const distA = Math.hypot(col + a.x - m.x, row + a.y - m.y);
+                const distB = Math.hypot(col + b.x - m.x, row + b.y - m.y);
+                return distB - distA;
+              });
+              cat.dir = possibleDirs[0];
+            } else {
+              let target = { x: m.x, y: m.y };
+              if (cat.name === 'Shyama') {
+                target = { x: m.x + m.dir.x * 3, y: m.y + m.dir.y * 3 };
+              } else if (cat.name === 'Pinku') {
+                target = { x: m.x - m.dir.y * 2, y: m.y + m.dir.x * 2 };
+              } else if (cat.name === 'Neelu') {
+                const distToM = Math.hypot(col - m.x, row - m.y);
+                target = distToM < 4 ? { x: 1, y: 1 } : { x: m.x, y: m.y };
+              }
+
+              possibleDirs.sort((a, b) => {
+                const distA = Math.hypot(col + a.x - target.x, row + a.y - target.y);
+                const distB = Math.hypot(col + b.x - target.x, row + b.y - target.y);
+                return distA - distB;
+              });
+              cat.dir = possibleDirs[0];
+            }
+          } else {
+            cat.dir = { x: -cat.dir.x, y: -cat.dir.y };
+          }
+        }
+
+        const distToPlayer = Math.hypot(m.x - cat.x, m.y - cat.y);
+        if (distToPlayer < 0.65) {
+          if (cat.state === 'SCARED') {
+            cat.state = 'EATEN';
+            eng.catCombo++;
+            const bonkPoints = 200 * Math.pow(2, Math.min(3, eng.catCombo - 1));
+            eng.rawScore += bonkPoints;
+            playSound('bonk');
+
+            eng.popups.push({
+              x: cat.x,
+              y: cat.y,
+              text: `+${bonkPoints}`,
+              color: '#38BDF8',
+              life: 1.2,
+            });
+
+            for (let p = 0; p < 15; p++) {
+              eng.particles.push({
+                x: cat.x + 0.5,
+                y: cat.y + 0.5,
+                vx: (Math.random() - 0.5) * 6,
+                vy: (Math.random() - 0.5) * 6,
+                color: '#38BDF8',
+                life: 0.7,
+              });
+            }
+          } else if (cat.state === 'CHASE') {
+            playSound('hit');
+            eng.lives--;
+            setLives(eng.lives);
+
+            if (eng.lives <= 0) {
+              handleGameOver();
+            } else {
+              eng.resetPause = 1.0;
+              eng.mushak.x = 9;
+              eng.mushak.y = 16;
+              eng.mushak.dir = { x: 0, y: 0 };
+              eng.mushak.nextDir = { x: -1, y: 0 };
+              eng.cats.forEach((c, idx) => {
+                const def = CAT_COLORS[idx % CAT_COLORS.length];
+                c.x = def.homeX;
+                c.y = def.homeY;
+                c.state = idx === 0 ? 'CHASE' : 'HOUSE';
+                c.dir = { x: 0, y: -1 };
+                c.houseTimer = idx * 2.5;
+              });
+            }
+          }
+        }
+      });
+
+      eng.particles = eng.particles.filter((p) => {
+        p.x += p.vx * dt;
+        p.y += p.vy * dt;
+        p.life -= dt;
+        return p.life > 0;
+      });
+
+      eng.popups = eng.popups.filter((pop) => {
+        pop.y -= 1.2 * dt;
+        pop.life -= dt;
+        return pop.life > 0;
+      });
+
+      renderCanvas(ctx, eng);
+    };
+
+    animId = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(animId);
+  }, [gameState, isPaused, diffMultiplier, handleGameOver, initBoard, playSound, tier]);
+
+  const renderCanvas = (ctx, eng) => {
+    const width = ctx.canvas.width;
+    const height = ctx.canvas.height;
+    const cellSize = width / COLS;
+
+    ctx.fillStyle = '#0B081A';
+    ctx.fillRect(0, 0, width, height);
+
+    for (let r = 0; r < ROWS; r++) {
+      for (let c = 0; c < COLS; c++) {
+        const cell = eng.grid[r][c];
+        const x = c * cellSize;
+        const y = r * cellSize;
+
+        if (cell === CELL.WALL) {
+          ctx.fillStyle = '#22143B';
+          ctx.fillRect(x, y, cellSize, cellSize);
+
+          ctx.strokeStyle = 'rgba(245, 158, 11, 0.45)';
+          ctx.lineWidth = 1.5;
+          ctx.strokeRect(x + 1, y + 1, cellSize - 2, cellSize - 2);
+        } else if (cell === CELL.DOOR) {
+          ctx.fillStyle = '#EC4899';
+          ctx.fillRect(x, y + cellSize * 0.4, cellSize, cellSize * 0.2);
+        } else if (cell === CELL.DOT) {
+          ctx.beginPath();
+          ctx.arc(x + cellSize / 2, y + cellSize / 2, cellSize * 0.16, 0, Math.PI * 2);
+          ctx.fillStyle = '#FBBF24';
+          ctx.fill();
+        } else if (cell === CELL.POWER) {
+          const pulse = 1 + Math.sin(performance.now() * 0.008) * 0.2;
+          ctx.beginPath();
+          ctx.arc(x + cellSize / 2, y + cellSize / 2, cellSize * 0.35 * pulse, 0, Math.PI * 2);
+          ctx.fillStyle = '#FFD700';
+          ctx.shadowColor = '#FFD700';
+          ctx.shadowBlur = 10;
+          ctx.fill();
+          ctx.shadowBlur = 0;
+        }
+      }
+    }
+
+    if (eng.fruit) {
+      const fx = eng.fruit.x * cellSize + cellSize / 2;
+      const fy = eng.fruit.y * cellSize + cellSize / 2;
+      ctx.font = `${cellSize * 1.1}px sans-serif`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(eng.fruit.emoji, fx, fy);
+    }
+
+    const mx = eng.mushak.x * cellSize + cellSize / 2;
+    const my = eng.mushak.y * cellSize + cellSize / 2;
+    const mRadius = cellSize * 0.44;
+
+    ctx.save();
+    ctx.translate(mx, my);
+
+    if (eng.divineTimer > 0) {
+      ctx.beginPath();
+      ctx.arc(0, 0, mRadius * 1.6 + Math.sin(performance.now() * 0.01) * 3, 0, Math.PI * 2);
+      ctx.strokeStyle = 'rgba(255, 215, 0, 0.8)';
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = '#FFD700';
+      ctx.shadowBlur = 12;
+      ctx.stroke();
+      ctx.shadowBlur = 0;
+    }
+
+    let rot = 0;
+    if (eng.mushak.dir.x === 1) rot = 0;
+    else if (eng.mushak.dir.x === -1) rot = Math.PI;
+    else if (eng.mushak.dir.y === 1) rot = Math.PI / 2;
+    else if (eng.mushak.dir.y === -1) rot = -Math.PI / 2;
+    ctx.rotate(rot);
+
+    const chomp = Math.abs(Math.sin(eng.mushak.mouthAngle)) * 0.45;
+
+    ctx.beginPath();
+    ctx.arc(0, 0, mRadius, chomp, Math.PI * 2 - chomp);
+    ctx.lineTo(0, 0);
+    ctx.fillStyle = eng.divineTimer > 0 ? '#FFD700' : '#E2E8F0';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(-mRadius * 0.4, -mRadius * 0.8, mRadius * 0.38, 0, Math.PI * 2);
+    ctx.fillStyle = eng.divineTimer > 0 ? '#F59E0B' : '#F472B6';
+    ctx.fill();
+
+    ctx.beginPath();
+    ctx.arc(mRadius * 0.2, -mRadius * 0.4, mRadius * 0.16, 0, Math.PI * 2);
+    ctx.fillStyle = '#0F172A';
+    ctx.fill();
+
+    ctx.restore();
+
+    eng.cats.forEach((cat) => {
+      const cx = cat.x * cellSize + cellSize / 2;
+      const cy = cat.y * cellSize + cellSize / 2;
+      const cRadius = cellSize * 0.44;
+
+      ctx.save();
+      ctx.translate(cx, cy);
+
+      if (cat.state === 'EATEN') {
+        ctx.beginPath();
+        ctx.arc(-cRadius * 0.3, -cRadius * 0.1, cRadius * 0.25, 0, Math.PI * 2);
+        ctx.arc(cRadius * 0.3, -cRadius * 0.1, cRadius * 0.25, 0, Math.PI * 2);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fill();
+        ctx.beginPath();
+        ctx.arc(-cRadius * 0.3, -cRadius * 0.1, cRadius * 0.12, 0, Math.PI * 2);
+        ctx.arc(cRadius * 0.3, -cRadius * 0.1, cRadius * 0.12, 0, Math.PI * 2);
+        ctx.fillStyle = '#0284C7';
+        ctx.fill();
+      } else {
+        const isScared = cat.state === 'SCARED';
+        const isBlinking = isScared && eng.divineTimer < 2.2 && Math.floor(performance.now() * 0.007) % 2 === 0;
+        const bodyColor = isScared ? (isBlinking ? '#FFFFFF' : '#38BDF8') : cat.color;
+
+        ctx.beginPath();
+        ctx.arc(0, -cRadius * 0.15, cRadius * 0.85, Math.PI, 0);
+        ctx.lineTo(cRadius * 0.85, cRadius * 0.8);
+        ctx.lineTo(cRadius * 0.45, cRadius * 0.55);
+        ctx.lineTo(0, cRadius * 0.8);
+        ctx.lineTo(-cRadius * 0.45, cRadius * 0.55);
+        ctx.lineTo(-cRadius * 0.85, cRadius * 0.8);
+        ctx.closePath();
+        ctx.fillStyle = bodyColor;
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(-cRadius * 0.7, -cRadius * 0.5);
+        ctx.lineTo(-cRadius * 0.85, -cRadius * 1.15);
+        ctx.lineTo(-cRadius * 0.25, -cRadius * 0.85);
+        ctx.closePath();
+        ctx.fillStyle = bodyColor;
+        ctx.fill();
+
+        ctx.beginPath();
+        ctx.moveTo(cRadius * 0.7, -cRadius * 0.5);
+        ctx.lineTo(cRadius * 0.85, -cRadius * 1.15);
+        ctx.lineTo(cRadius * 0.25, -cRadius * 0.85);
+        ctx.closePath();
+        ctx.fillStyle = bodyColor;
+        ctx.fill();
+
+        if (isScared) {
+          ctx.beginPath();
+          ctx.arc(-cRadius * 0.3, -cRadius * 0.1, cRadius * 0.18, 0, Math.PI * 2);
+          ctx.arc(cRadius * 0.3, -cRadius * 0.1, cRadius * 0.18, 0, Math.PI * 2);
+          ctx.fillStyle = isBlinking ? '#EF4444' : '#FFFFFF';
+          ctx.fill();
+        } else {
+          ctx.beginPath();
+          ctx.arc(-cRadius * 0.3, -cRadius * 0.15, cRadius * 0.22, 0, Math.PI * 2);
+          ctx.arc(cRadius * 0.3, -cRadius * 0.15, cRadius * 0.22, 0, Math.PI * 2);
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fill();
+          ctx.beginPath();
+          ctx.arc(-cRadius * 0.3 + cat.dir.x * 2, -cRadius * 0.15 + cat.dir.y * 2, cRadius * 0.12, 0, Math.PI * 2);
+          ctx.arc(cRadius * 0.3 + cat.dir.x * 2, -cRadius * 0.15 + cat.dir.y * 2, cRadius * 0.12, 0, Math.PI * 2);
+          ctx.fillStyle = '#0F172A';
+          ctx.fill();
+        }
+      }
+
+      ctx.restore();
+    });
+
+    eng.particles.forEach((p) => {
+      ctx.beginPath();
+      ctx.arc(p.x * cellSize, p.y * cellSize, cellSize * 0.15 * p.life, 0, Math.PI * 2);
+      ctx.fillStyle = p.color;
+      ctx.fill();
+    });
+
+    eng.popups.forEach((pop) => {
+      ctx.save();
+      ctx.font = `bold ${cellSize * 0.85}px sans-serif`;
+      ctx.fillStyle = pop.color;
+      ctx.textAlign = 'center';
+      ctx.globalAlpha = Math.max(0, pop.life);
+      ctx.fillText(pop.text, pop.x * cellSize, pop.y * cellSize);
+      ctx.restore();
+    });
+  };
 
   if (gameState === 'gameover') {
     return (
@@ -447,14 +975,13 @@ export default function MushakMaze({ player }) {
         newlyUnlockedTier={progressionResult?.newlyUnlockedTier}
         scoreBreakdown={{
           base: rawScore,
-          mazes: mazesCompleted,
-          maxCombo: bonusesCollected,
+          mazes: stage,
           multiplier: DIFFICULTY_TIERS[difficulty]?.multiplierLabel,
         }}
         stats={{
-          mazesSolved: mazesCompleted,
-          laddusEaten: bonusesCollected,
+          stageReached: stage,
           livesRemaining: lives,
+          score,
         }}
         onRestart={handleStart}
         onNextDifficulty={(nextTier) => {
@@ -480,7 +1007,6 @@ export default function MushakMaze({ player }) {
         userSelect: 'none',
       }}
     >
-      {/* Controls Header (Pause + Sound) */}
       <div style={{ position: 'absolute', top: '1rem', right: '1rem', zIndex: 30, display: 'flex', gap: '0.5rem' }}>
         {gameState === 'playing' && (
           <button
@@ -498,7 +1024,6 @@ export default function MushakMaze({ player }) {
               cursor: 'pointer',
             }}
             title="Pause Game (Esc)"
-            aria-label="Pause"
           >
             <Pause size={18} />
           </button>
@@ -523,7 +1048,6 @@ export default function MushakMaze({ player }) {
         </button>
       </div>
 
-      {/* Pause Overlay */}
       <AnimatePresence>
         {isPaused && (
           <PauseOverlay
@@ -541,7 +1065,6 @@ export default function MushakMaze({ player }) {
       </AnimatePresence>
 
       <AnimatePresence mode="wait">
-        {/* Pre-Game Idle Card */}
         {gameState === 'idle' && (
           <motion.div
             key="idle"
@@ -553,7 +1076,7 @@ export default function MushakMaze({ player }) {
               flexDirection: 'column',
               alignItems: 'center',
               justifyContent: 'center',
-              maxWidth: 420,
+              maxWidth: 440,
               width: '100%',
               margin: 'auto',
               background: 'var(--card, rgba(20, 10, 46, 0.95))',
@@ -565,13 +1088,13 @@ export default function MushakMaze({ player }) {
               boxShadow: '0 20px 40px rgba(0,0,0,0.5)',
             }}
           >
-            <div style={{ fontSize: '3.2rem', filter: 'drop-shadow(0 0 16px rgba(245,158,11,0.5))' }}>
+            <div style={{ fontSize: '3.4rem', filter: 'drop-shadow(0 0 16px rgba(245,158,11,0.5))' }}>
               🐭
             </div>
             <div>
               <h1
                 style={{
-                  fontSize: '1.8rem',
+                  fontSize: '1.85rem',
                   fontWeight: 900,
                   background: 'linear-gradient(135deg, #F59E0B, #10B981)',
                   WebkitBackgroundClip: 'text',
@@ -580,14 +1103,13 @@ export default function MushakMaze({ player }) {
                   fontFamily: 'var(--font-display)',
                 }}
               >
-                MUSHAK MAZE
+                MUSHAK MODAK CHASE
               </h1>
               <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', margin: '0.35rem 0 0' }}>
-                Guide Mushak through dynamic mazes! Collect sacred laddus, avoid crumbly floor traps, and dodge patrol cats in the dark!
+                Gobble sacred Prasad Modaks, dodge the Palace Cats, and grab Golden Maha-Laddus to turn into Super Divine Mushak and bonk the cats!
               </p>
             </div>
 
-            {/* Difficulty Selector */}
             <div style={{ width: '100%' }}>
               <DifficultySelector
                 gameId="mushak-maze"
@@ -614,12 +1136,11 @@ export default function MushakMaze({ player }) {
                 width: '100%',
               }}
             >
-              START ({DIFFICULTY_TIERS[difficulty]?.name.toUpperCase()})
+              PLAY NOW ({DIFFICULTY_TIERS[difficulty]?.name.toUpperCase()})
             </button>
           </motion.div>
         )}
 
-        {/* Countdown */}
         {gameState === 'countdown' && (
           <motion.div
             key="countdown"
@@ -632,7 +1153,6 @@ export default function MushakMaze({ player }) {
           </motion.div>
         )}
 
-        {/* Playing Phase */}
         {gameState === 'playing' && (
           <motion.div
             key="playing"
@@ -644,8 +1164,8 @@ export default function MushakMaze({ player }) {
               flexDirection: 'column',
               alignItems: 'center',
               width: '100%',
-              maxWidth: '440px',
-              gap: '0.75rem',
+              maxWidth: '420px',
+              gap: '0.6rem',
               flex: 1,
             }}
           >
@@ -658,7 +1178,7 @@ export default function MushakMaze({ player }) {
                 gap: '0.5rem',
                 background: 'rgba(255,255,255,0.05)',
                 borderRadius: 'var(--radius-xl, 12px)',
-                padding: '0.6rem 0.85rem',
+                padding: '0.55rem 0.75rem',
                 textAlign: 'center',
                 boxSizing: 'border-box',
               }}
@@ -668,13 +1188,13 @@ export default function MushakMaze({ player }) {
                 <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#F59E0B' }}>{score}</div>
               </div>
               <div>
-                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>MAZES</div>
-                <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#10B981' }}>{mazesCompleted}</div>
+                <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>STAGE</div>
+                <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#10B981' }}>{stage}</div>
               </div>
               <div>
                 <div style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>LIVES</div>
-                <div style={{ fontWeight: 800, fontSize: '1.1rem', color: '#EF4444' }}>
-                  {'❤️'.repeat(lives)}
+                <div style={{ fontWeight: 800, fontSize: '1.05rem', color: '#EF4444' }}>
+                  {'❤️'.repeat(Math.max(0, lives))}
                 </div>
               </div>
               <div>
@@ -691,90 +1211,62 @@ export default function MushakMaze({ player }) {
               </div>
             </div>
 
-            {/* Maze Board */}
+            {/* Super Divine Mode Banner */}
+            {divineTimeRemaining > 0 && (
+              <motion.div
+                initial={{ scale: 0.9, opacity: 0 }}
+                animate={{ scale: 1, opacity: 1 }}
+                style={{
+                  width: '100%',
+                  background: 'linear-gradient(90deg, #F59E0B, #EAB308, #F59E0B)',
+                  color: '#0F172A',
+                  padding: '0.35rem 0.75rem',
+                  borderRadius: 'var(--radius-md, 8px)',
+                  fontWeight: 900,
+                  fontSize: '0.85rem',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  gap: '0.45rem',
+                  boxShadow: '0 0 15px rgba(245,158,11,0.6)',
+                }}
+              >
+                <Sparkles size={16} /> SUPER DIVINE MUSHAK! BONK CATS: {divineTimeRemaining}s
+              </motion.div>
+            )}
+
+            {/* 60 FPS HTML5 Arcade Canvas */}
             <div
               style={{
-                display: 'grid',
-                gridTemplateColumns: `repeat(${tier.gridSize}, ${cellSize}px)`,
-                gridTemplateRows: `repeat(${tier.gridSize}, ${cellSize}px)`,
-                gap: '1px',
-                padding: '6px',
+                width: '100%',
+                maxWidth: '390px',
+                aspectRatio: `${COLS} / ${ROWS}`,
+                borderRadius: '12px',
+                overflow: 'hidden',
+                border: '2px solid rgba(245,158,11,0.3)',
+                boxShadow: '0 0 30px rgba(0,0,0,0.8)',
                 background: '#0B081A',
-                borderRadius: 'var(--radius-lg, 12px)',
-                border: '2px solid rgba(255,255,255,0.1)',
-                boxShadow: '0 0 25px rgba(0,0,0,0.7)',
-                position: 'relative',
+                touchAction: 'none',
               }}
+              onTouchStart={handleTouchStart}
+              onTouchEnd={handleTouchEnd}
             >
-              {maze.map((row, y) =>
-                row.map((cell, x) => {
-                  const isPlayer = playerPos.x === x && playerPos.y === y;
-                  const isCat = cats.some((c) => c.x === x && c.y === y);
-
-                  // Fog of war check
-                  let inLight = true;
-                  if (tier.hasFogOfWar) {
-                    const dist = Math.hypot(x - playerPos.x, y - playerPos.y);
-                    inLight = dist <= tier.fogRadius;
-                  }
-
-                  let bg = '#181433';
-                  if (!inLight) {
-                    bg = '#05030B';
-                  } else if (cell === CELL_TYPES.WALL) {
-                    bg = '#140E26';
-                  } else if (cell === CELL_TYPES.HOLE) {
-                    bg = '#080512';
-                  } else if (cell === CELL_TYPES.CRACKED) {
-                    bg = '#451A03';
-                  } else if (cell === CELL_TYPES.TRAP) {
-                    bg = '#3F1212';
-                  } else {
-                    bg = '#251E45';
-                  }
-
-                  return (
-                    <div
-                      key={`${x}-${y}`}
-                      style={{
-                        width: `${cellSize}px`,
-                        height: `${cellSize}px`,
-                        background: bg,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: `${cellSize * 0.75}px`,
-                        borderRadius: cell === CELL_TYPES.WALL ? 2 : 3,
-                        transition: 'background 0.2s',
-                        position: 'relative',
-                      }}
-                    >
-                      {inLight && (
-                        <>
-                          {isPlayer && <span>🐭</span>}
-                          {!isPlayer && isCat && <span>🐱</span>}
-                          {!isPlayer && !isCat && cell === CELL_TYPES.GOAL && <span>🥮</span>}
-                          {!isPlayer && !isCat && cell === CELL_TYPES.BONUS && <span>🟡</span>}
-                          {!isPlayer && !isCat && cell === CELL_TYPES.TRAP && <span>⚠️</span>}
-                          {!isPlayer && !isCat && cell === CELL_TYPES.CRACKED && (
-                            <span style={{ fontSize: `${cellSize * 0.5}px` }}>🕸️</span>
-                          )}
-                        </>
-                      )}
-                    </div>
-                  );
-                })
-              )}
+              <canvas
+                ref={canvasRef}
+                width={380}
+                height={420}
+                style={{ width: '100%', height: '100%', display: 'block' }}
+              />
             </div>
 
-            {/* Virtual D-Pad for Touch/Mobile */}
+            {/* Virtual Responsive Arcade D-Pad */}
             <div
               style={{
                 display: 'grid',
-                gridTemplateColumns: 'repeat(3, 56px)',
-                gridTemplateRows: 'repeat(3, 50px)',
+                gridTemplateColumns: 'repeat(3, 58px)',
+                gridTemplateRows: 'repeat(3, 46px)',
                 gap: '4px',
-                marginTop: '0.25rem',
+                marginTop: '0.2rem',
                 justifyContent: 'center',
               }}
             >
@@ -782,9 +1274,10 @@ export default function MushakMaze({ player }) {
               <button
                 onPointerDown={(e) => {
                   e.preventDefault();
-                  movePlayer(0, -1);
+                  requestDirection(0, -1);
                 }}
                 style={dpadBtnStyle}
+                aria-label="Up"
               >
                 <ArrowUp size={22} />
               </button>
@@ -793,21 +1286,23 @@ export default function MushakMaze({ player }) {
               <button
                 onPointerDown={(e) => {
                   e.preventDefault();
-                  movePlayer(-1, 0);
+                  requestDirection(-1, 0);
                 }}
                 style={dpadBtnStyle}
+                aria-label="Left"
               >
                 <ArrowLeft size={22} />
               </button>
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                <span style={{ fontSize: '0.65rem', color: 'var(--text-muted)' }}>D-PAD</span>
+                <span style={{ fontSize: '0.62rem', color: 'var(--text-muted)' }}>SWIPE / D-PAD</span>
               </div>
               <button
                 onPointerDown={(e) => {
                   e.preventDefault();
-                  movePlayer(1, 0);
+                  requestDirection(1, 0);
                 }}
                 style={dpadBtnStyle}
+                aria-label="Right"
               >
                 <ArrowRight size={22} />
               </button>
@@ -816,9 +1311,10 @@ export default function MushakMaze({ player }) {
               <button
                 onPointerDown={(e) => {
                   e.preventDefault();
-                  movePlayer(0, 1);
+                  requestDirection(0, 1);
                 }}
                 style={dpadBtnStyle}
+                aria-label="Down"
               >
                 <ArrowDown size={22} />
               </button>

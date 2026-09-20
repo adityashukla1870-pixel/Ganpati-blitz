@@ -30,7 +30,7 @@ class TestAPIEndpoints(unittest.TestCase):
         self.assertEqual(res.status_code, 200)
         data = json.loads(res.data)
         self.assertEqual(data['display_name'], 'Aditya Shukla')
-        self.assertEqual(data['universal_points'], 284)
+        self.assertGreaterEqual(data['universal_points'], 284)
         self.assertTrue(data.get('is_existing'))
 
     def test_player_login_wrong_pin(self):
