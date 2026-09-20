@@ -1234,34 +1234,48 @@ def on_join_room(data):
 
 @socketio.on("player_ready")
 def on_player_ready(data):
-    room_code = data.get("room_code")
-    player_id = data.get("player_id")
+    room_code = (data.get("room_code") or "").strip().upper()
+    player_id = (data.get("player_id") or data.get("id") or "").strip()
 
     room = rooms.get(room_code)
     if not room:
         emit("error", {"message": "Room not found"})
         return
 
-    if room["status"] not in ("ready", "waiting"):
-        emit("error", {"message": "Cannot ready in current state"})
+    # Always ensure the invoking socket is joined to room_code
+    join_room(room_code)
+
+    if not player_id:
+        player_id = room.get("players", {}).get(request.sid)
+
+    if not player_id:
+        emit("error", {"message": "Invalid player ID"})
         return
 
+    # Ensure socket SID mapping is updated
+    room["players"][request.sid] = player_id
     room["ready"][player_id] = True
 
+    # Deduplicate players_info by player_id
     players_info = []
-    for sid, pid in room["players"].items():
-        players_info.append({
-            "player_id": pid,
-            "display_name": room["player_names"].get(pid, "Player"),
-            "ready": room["ready"].get(pid, False),
-        })
+    seen_pids = set()
+    for sid, pid in list(room["players"].items()):
+        if pid not in seen_pids:
+            seen_pids.add(pid)
+            players_info.append({
+                "player_id": pid,
+                "display_name": room["player_names"].get(pid, "Player"),
+                "ready": room["ready"].get(pid, False),
+            })
 
     emit("player_ready", {
         "player_id": player_id,
         "players": players_info,
     }, room=room_code)
 
-    if len(room["ready"]) == 2 and len(room["players"]) == 2:
+    # Trigger match start when at least 2 unique players are in room and all are ready
+    unique_pids = set(room["players"].values())
+    if len(unique_pids) >= 2 and all(room["ready"].get(pid, False) for pid in unique_pids):
         _start_match(room_code)
 
 
@@ -1270,9 +1284,29 @@ def _start_match(room_code):
     if not room:
         return
 
+    # If already in countdown, re-emit to ensure any reconnected player receives it
+    if room.get("status") == "countdown" and room.get("match_id"):
+        match_id = room["match_id"]
+        match = matches.get(match_id)
+        if match:
+            players_info = []
+            for pid in match["player_ids"]:
+                players_info.append({
+                    "player_id": pid,
+                    "display_name": match.get("player_names", {}).get(pid, "Player"),
+                })
+            emit("start_countdown", {
+                "match_id": match_id,
+                "seed": match["seed"],
+                "players": players_info,
+                "server_time": int(time.time() * 1000),
+            }, room=room_code)
+            return
+
     match_id = str(uuid.uuid4())
     seed = generate_seed()
-    player_ids = list(room["players"].values())
+    # Deduplicate player_ids preserving order
+    player_ids = list(dict.fromkeys(room["players"].values()))
 
     match = {
         "match_id": match_id,
@@ -1294,7 +1328,7 @@ def _start_match(room_code):
     room["status"] = "countdown"
 
     players_info = []
-    for sid, pid in room["players"].items():
+    for pid in player_ids:
         players_info.append({
             "player_id": pid,
             "display_name": room["player_names"].get(pid, "Player"),

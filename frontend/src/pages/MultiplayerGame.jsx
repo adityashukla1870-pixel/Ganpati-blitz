@@ -77,7 +77,7 @@ export default function MultiplayerGame({ player }) {
     }
 
     if (players && players.length >= 2) {
-      const myId = player?.player_id
+      const myId = player?.player_id || player?.id
       const opp = players.find(p => p.player_id !== myId)
       if (opp) setOpponentName(opp.display_name)
     } else if (opponent) {
@@ -246,12 +246,21 @@ export default function MultiplayerGame({ player }) {
 
   useEffect(() => {
     if (gameState === 'playing') return
+
+    // Auto-start immediately since countdown was completed in WaitingRoom
+    const t = setTimeout(() => {
+      startGame()
+    }, 150)
+
     const socket = getSocket()
     const onStart = () => {
       startGame()
     }
     socket.on('game_started', onStart)
-    return () => socket.off('game_started', onStart)
+    return () => {
+      clearTimeout(t)
+      socket.off('game_started', onStart)
+    }
   }, [gameState, startGame])
 
   const endGame = useCallback(() => {
@@ -261,7 +270,7 @@ export default function MultiplayerGame({ player }) {
     const socket = getSocket()
     socket.emit('player_finished', {
       match_id,
-      player_id: player?.player_id,
+      player_id: player?.player_id || player?.id,
       score: scoreRef.current,
       duration: GAME_DURATION,
     })
@@ -307,7 +316,7 @@ export default function MultiplayerGame({ player }) {
     const socket = getSocket()
     socket.emit('score_update_live', {
       match_id,
-      player_id: player?.player_id,
+      player_id: player?.player_id || player?.id,
       score: scoreRef.current,
     })
   }, [match_id, player])

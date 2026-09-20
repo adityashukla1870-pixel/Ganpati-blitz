@@ -48,7 +48,7 @@ export default function WaitingRoomPage({ player: playerProp }) {
 
     const onPlayerJoined = (data) => {
       if (data.players) {
-        setPlayers(data.players.map(p => ({ ...p, ready: false })))
+        setPlayers(data.players.map(p => ({ ...p, ready: p.ready || false })))
       }
     }
 
@@ -79,6 +79,7 @@ export default function WaitingRoomPage({ player: playerProp }) {
           seed: data.seed,
           match_id: data.match_id,
           opponent: data.opponent,
+          players: data.players,
         },
       })
     }
@@ -130,20 +131,25 @@ export default function WaitingRoomPage({ player: playerProp }) {
   }, [roomCode, navigate, player])
 
   useEffect(() => {
-    if (countdown === null || countdown <= 0) return
+    if (countdown === null) return
+
     if (countdown > 0) {
-      const t = setTimeout(() => setCountdown(c => c - 1), 1000)
+      const t = setTimeout(() => setCountdown((c) => (c > 0 ? c - 1 : 0)), 1000)
       return () => clearTimeout(t)
     }
+
     if (countdown === 0 && matchData) {
-      navigate('/multiplayer/game', {
-        state: {
-          room_code: roomCode,
-          seed: matchData.seed,
-          match_id: matchData.match_id,
-          players: matchData.players,
-        },
-      })
+      const t = setTimeout(() => {
+        navigate('/multiplayer/game', {
+          state: {
+            room_code: roomCode,
+            seed: matchData.seed,
+            match_id: matchData.match_id,
+            players: matchData.players,
+          },
+        })
+      }, 600)
+      return () => clearTimeout(t)
     }
   }, [countdown, matchData, navigate, roomCode])
 
@@ -174,11 +180,28 @@ export default function WaitingRoomPage({ player: playerProp }) {
     setTimeout(() => setCopied(false), 2000)
   }
 
-  const myReady = players.find((p) => p.player_id === player?.player_id)?.ready || false
-  const opponentReady = players.find((p) => p.player_id !== player?.player_id)?.ready || false
-  const opponent = players.find((p) => p.player_id !== player?.player_id)
+  const myPid = player?.player_id || player?.id
+  const myReady = players.find((p) => p.player_id === myPid)?.ready || false
+  const opponentReady = players.find((p) => p.player_id !== myPid)?.ready || false
+  const opponent = players.find((p) => p.player_id !== myPid)
 
-  if (countdown !== null && countdown > 0) {
+  // Safety fallback: if both are ready but countdown hasn't started after 1.5s, nudge server
+  useEffect(() => {
+    if (myReady && opponentReady && countdown === null && roomCode && myPid) {
+      const timer = setTimeout(() => {
+        const socket = getSocket()
+        if (socket.connected) {
+          socket.emit('player_ready', {
+            room_code: roomCode,
+            player_id: myPid,
+          })
+        }
+      }, 1500)
+      return () => clearTimeout(timer)
+    }
+  }, [myReady, opponentReady, countdown, roomCode, myPid])
+
+  if (countdown !== null && countdown >= 0) {
     return (
       <div
         style={{
@@ -508,7 +531,7 @@ export default function WaitingRoomPage({ player: playerProp }) {
               >
                 <Loader2 size={18} />
               </motion.div>
-              Waiting for opponent...
+              {myReady && opponentReady ? 'Starting match...' : 'Waiting for opponent...'}
             </div>
           )}
         </motion.div>

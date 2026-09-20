@@ -70,10 +70,10 @@ export default function FriendRoomPage({ player: playerProp, onPlayerSetup }) {
     }
 
     const trimmed = (customName || guestName || '').trim()
-    const chosenName = trimmed || `Player_${Math.floor(1000 + Math.random() * 9000)}`
+    const guestId = `guest_${uuidv4().replace(/-/g, '').slice(0, 12)}`
     const newGuest = {
-      player_id: `guest_${uuidv4().replace(/-/g, '').slice(0, 12)}`,
-      id: `guest_${uuidv4().replace(/-/g, '').slice(0, 12)}`,
+      player_id: guestId,
+      id: guestId,
       display_name: chosenName,
       name: chosenName,
       campus: 'Online Arena',
