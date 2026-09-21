@@ -172,8 +172,8 @@ export default function PlayerSetup({ onSubmit, defaultMode = 'create' }) {
       </div>
 
       <div style={{ textAlign: 'center', marginBottom: '1.5rem' }}>
-        <div style={{ fontSize: '2.4rem', marginBottom: '0.35rem' }}>
-          {mode === 'create' ? avatar : '🪔'}
+        <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.65rem' }}>
+          <PlayerAvatar avatar={mode === 'create' ? avatar : 'divine-diya'} size={68} showGlow />
         </div>
         <h2 style={{ margin: '0 0 0.25rem', fontSize: '1.45rem', fontWeight: 800 }}>
           {mode === 'create' ? 'Create Player Profile' : 'Log In to Account'}

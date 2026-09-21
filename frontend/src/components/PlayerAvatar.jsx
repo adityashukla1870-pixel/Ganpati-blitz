@@ -15,6 +15,13 @@ export default function PlayerAvatar({
   title = null,
 }) {
   const meta = getAvatarMeta(avatar)
+  const [imgError, setImgError] = React.useState(false)
+
+  // Reset img error if avatar changes
+  React.useEffect(() => {
+    setImgError(false)
+  }, [meta.image])
+
   const finalBorderColor = tierColor || meta.borderColor || '#FFD700'
   const finalGlow = showGlow
     ? `0 0 16px ${meta.glow}, 0 2px 8px rgba(0,0,0,0.5)`
@@ -44,47 +51,63 @@ export default function PlayerAvatar({
         ...style,
       }}
     >
-      <svg
-        viewBox="0 0 100 100"
-        width="82%"
-        height="82%"
-        style={{ display: 'block', overflow: 'visible' }}
-      >
-        <defs>
-          {/* Shared Metallic Gold Gradients */}
-          <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#FFF275" />
-            <stop offset="50%" stopColor="#FFD700" />
-            <stop offset="100%" stopColor="#D97706" />
-          </linearGradient>
+      {meta.image && !imgError ? (
+        <img
+          src={meta.image}
+          alt={meta.name}
+          onError={() => setImgError(true)}
+          style={{
+            width: '100%',
+            height: '100%',
+            objectFit: 'cover',
+            borderRadius: '50%',
+            display: 'block',
+          }}
+          loading="lazy"
+        />
+      ) : (
+        <svg
+          viewBox="0 0 100 100"
+          width="82%"
+          height="82%"
+          style={{ display: 'block', overflow: 'visible' }}
+        >
+          <defs>
+            {/* Shared Metallic Gold Gradients */}
+            <linearGradient id="goldGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#FFF275" />
+              <stop offset="50%" stopColor="#FFD700" />
+              <stop offset="100%" stopColor="#D97706" />
+            </linearGradient>
 
-          <linearGradient id="flameGrad" x1="0%" y1="100%" x2="0%" y2="0%">
-            <stop offset="0%" stopColor="#DC2626" />
-            <stop offset="45%" stopColor="#F97316" />
-            <stop offset="85%" stopColor="#FBBF24" />
-            <stop offset="100%" stopColor="#FFFFFF" />
-          </linearGradient>
+            <linearGradient id="flameGrad" x1="0%" y1="100%" x2="0%" y2="0%">
+              <stop offset="0%" stopColor="#DC2626" />
+              <stop offset="45%" stopColor="#F97316" />
+              <stop offset="85%" stopColor="#FBBF24" />
+              <stop offset="100%" stopColor="#FFFFFF" />
+            </linearGradient>
 
-          <linearGradient id="lotusPinkGrad" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#F472B6" />
-            <stop offset="60%" stopColor="#EC4899" />
-            <stop offset="100%" stopColor="#BE185D" />
-          </linearGradient>
+            <linearGradient id="lotusPinkGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+              <stop offset="0%" stopColor="#F472B6" />
+              <stop offset="60%" stopColor="#EC4899" />
+              <stop offset="100%" stopColor="#BE185D" />
+            </linearGradient>
 
-          <linearGradient id="rubyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#FDA4AF" />
-            <stop offset="60%" stopColor="#E11D48" />
-            <stop offset="100%" stopColor="#881337" />
-          </linearGradient>
+            <linearGradient id="rubyGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stopColor="#FDA4AF" />
+              <stop offset="60%" stopColor="#E11D48" />
+              <stop offset="100%" stopColor="#881337" />
+            </linearGradient>
 
-          <filter id="avatarDropShadow" x="-20%" y="-20%" width="140%" height="140%">
-            <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#000000" floodOpacity="0.45" />
-          </filter>
-        </defs>
+            <filter id="avatarDropShadow" x="-20%" y="-20%" width="140%" height="140%">
+              <feDropShadow dx="0" dy="2" stdDeviation="2" floodColor="#000000" floodOpacity="0.45" />
+            </filter>
+          </defs>
 
-        {/* Dynamic Vector Artwork per Insignia */}
-        {renderInsigniaPath(meta.id)}
-      </svg>
+          {/* Dynamic Vector Artwork per Insignia */}
+          {renderInsigniaPath(meta.id)}
+        </svg>
+      )}
     </div>
   )
 }
