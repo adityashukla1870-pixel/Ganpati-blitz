@@ -181,11 +181,13 @@ export default function App() {
   return (
     <div className="app">
       <FestiveBackground />
-      <TopNav
-        player={player}
-        soundEnabled={soundEnabled}
-        onSoundToggle={toggleSound}
-      />
+      <ErrorBoundary>
+        <TopNav
+          player={player}
+          soundEnabled={soundEnabled}
+          onSoundToggle={toggleSound}
+        />
+      </ErrorBoundary>
       <main className="main-content">
         <ErrorBoundary>
           <Suspense fallback={GameLoader}>

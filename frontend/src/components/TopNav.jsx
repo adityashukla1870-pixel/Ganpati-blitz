@@ -83,14 +83,10 @@ export default function TopNav({ player, soundEnabled, onSoundToggle }) {
       !pathname.includes('/difficulty') &&
       !pathname.includes('/instructions'))
 
-  if (isGameplayRoute) {
-    return null
-  }
-
   const currentUP = Math.max(Number(player?.universal_points || 0), Number(universalPoints || 0))
   const tier = getRankTier(currentUP)
 
-  // Compute live level and XP progress
+  // Compute live level and XP progress (must be called before any early return)
   const progression = useMemo(() => {
     if (player?.progression?.level) {
       return player.progression
@@ -98,6 +94,10 @@ export default function TopNav({ player, soundEnabled, onSoundToggle }) {
     const xp = player?.total_xp || player?.xp || Math.max(currentUP, 50)
     return calculateProgression(xp)
   }, [player, currentUP])
+
+  if (isGameplayRoute) {
+    return null
+  }
 
   const isPlayActive =
     pathname === '/games' ||
