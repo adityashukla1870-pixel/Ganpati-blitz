@@ -54,6 +54,36 @@ export default function GameResult({
   const resolvedBest = bestScore ?? previousBest ?? 0
   const tierConfig = DIFFICULTY_TIERS[difficulty] || DIFFICULTY_TIERS.normal
 
+  // Universal Points calculation or fallback estimate (must be declared before rival useMemo)
+  const computedUP = useMemo(() => {
+    if (universalPoints !== undefined && universalPoints !== null) {
+      return {
+        totalUP: universalPoints,
+        base: universalPointsBreakdown?.base ?? 25,
+        performanceNormalized: universalPointsBreakdown?.performance_normalized ?? 50,
+        multiplier: universalPointsBreakdown?.difficulty_multiplier ?? tierConfig.multiplier,
+        subtotal: universalPointsBreakdown?.subtotal ?? 75,
+        comboBonus: universalPointsBreakdown?.combo_bonus ?? 0,
+        accBonus: universalPointsBreakdown?.acc_bonus ?? 0,
+        pbBonus: universalPointsBreakdown?.pb_bonus ?? (isPersonalBest ? 10 : 0),
+        totalBonuses: universalPointsBreakdown?.bonuses ?? (isPersonalBest ? 10 : 0),
+      }
+    }
+    return estimateUniversalPoints({
+      gameId,
+      score,
+      duration: stats?.duration || 30,
+      difficulty,
+      stats: {
+        ...stats,
+        base: scoreBreakdown?.base,
+        accuracy: scoreBreakdown?.accuracy,
+        maxCombo: scoreBreakdown?.maxCombo,
+      },
+      isPB: isPersonalBest,
+    })
+  }, [universalPoints, universalPointsBreakdown, tierConfig.multiplier, gameId, score, stats, difficulty, scoreBreakdown, isPersonalBest])
+
   const player = useMemo(() => getPlayer(), [])
   const nearMiss = useMemo(() => getNearMissInfo(score, resolvedBest), [score, resolvedBest])
   const rival = useMemo(() => getNextRivalTarget(player?.player_id || player?.id, computedUP?.totalUP), [player, computedUP])
@@ -108,34 +138,6 @@ export default function GameResult({
       : null)
   const isHigherTierAvailable = higherTierId && isTierUnlocked(gameId, higherTierId)
   const higherTierConfig = isHigherTierAvailable ? DIFFICULTY_TIERS[higherTierId] : null
-
-  // Universal Points calculation or fallback estimate
-  const computedUP =
-    universalPoints !== undefined && universalPoints !== null
-      ? {
-          totalUP: universalPoints,
-          base: universalPointsBreakdown?.base ?? 25,
-          performanceNormalized: universalPointsBreakdown?.performance_normalized ?? 50,
-          multiplier: universalPointsBreakdown?.difficulty_multiplier ?? tierConfig.multiplier,
-          subtotal: universalPointsBreakdown?.subtotal ?? 75,
-          comboBonus: universalPointsBreakdown?.combo_bonus ?? 0,
-          accBonus: universalPointsBreakdown?.acc_bonus ?? 0,
-          pbBonus: universalPointsBreakdown?.pb_bonus ?? (isPersonalBest ? 10 : 0),
-          totalBonuses: universalPointsBreakdown?.bonuses ?? (isPersonalBest ? 10 : 0),
-        }
-      : estimateUniversalPoints({
-          gameId,
-          score,
-          duration: stats?.duration || 30,
-          difficulty,
-          stats: {
-            ...stats,
-            base: scoreBreakdown?.base,
-            accuracy: scoreBreakdown?.accuracy,
-            maxCombo: scoreBreakdown?.maxCombo,
-          },
-          isPB: isPersonalBest,
-        })
 
   const handleNextGame = () => {
     navigate(`/game/${nextGameId}/mode`)

@@ -23,6 +23,7 @@ import MatchResultPage from './pages/MatchResultPage'
 import QuickMatchPage from './pages/QuickMatchPage'
 import MatchHistoryPage from './pages/MatchHistoryPage'
 import Leaderboard from './pages/Leaderboard'
+import ErrorBoundary from './components/ErrorBoundary'
 import { getSoundEnabled, setSoundEnabled } from './utils/storage'
 import { warmUpBackend } from './services/socket'
 
@@ -142,64 +143,66 @@ export default function App() {
         onSoundToggle={toggleSound}
       />
       <main className="main-content">
-        <Suspense fallback={GameLoader}>
-          <Routes>
-            {/* Step 1: Landing Screen */}
-            <Route path="/" element={<Home player={player} />} />
+        <ErrorBoundary>
+          <Suspense fallback={GameLoader}>
+            <Routes>
+              {/* Step 1: Landing Screen */}
+              <Route path="/" element={<Home player={player} />} />
 
-            {/* Step 2: Game Hub */}
-            <Route path="/games" element={<GameHub />} />
+              {/* Step 2: Game Hub */}
+              <Route path="/games" element={<GameHub />} />
 
-            {/* Step 3: Game Mode Selection */}
-            <Route path="/game/:gameId/mode" element={<GameModeScreen />} />
+              {/* Step 3: Game Mode Selection */}
+              <Route path="/game/:gameId/mode" element={<GameModeScreen />} />
 
-            {/* Step 4: Solo Difficulty Selection */}
-            <Route path="/game/:gameId/difficulty" element={<DifficultyScreen />} />
+              {/* Step 4: Solo Difficulty Selection */}
+              <Route path="/game/:gameId/difficulty" element={<DifficultyScreen />} />
 
-            {/* Step 5: Game Instructions & Pre-Game */}
-            <Route path="/game/:gameId/instructions" element={<GameInstructionsScreen />} />
+              {/* Step 5: Game Instructions & Pre-Game */}
+              <Route path="/game/:gameId/instructions" element={<GameInstructionsScreen />} />
 
-            {/* Legacy redirect */}
-            <Route path="/game/:gameId/detail" element={<DetailRedirect />} />
+              {/* Legacy redirect */}
+              <Route path="/game/:gameId/detail" element={<DetailRedirect />} />
 
-            {/* Step 6 & 7: Gameplay Screens */}
-            <Route path="/game/modak-rush" element={<ModakRush player={player} />} />
-            <Route path="/game/diya-dash" element={<DiyaDash player={player} />} />
-            <Route path="/game/dhol-battle" element={<DholBattle player={player} />} />
-            <Route path="/game/rangoli-rush" element={<RangoliRush player={player} />} />
-            <Route path="/game/mushak-maze" element={<MushakMaze player={player} />} />
-            <Route path="/game/ganpati-logic" element={<GanpatiLogic player={player} />} />
-            <Route path="/blitz-mix" element={<BlitzMix player={player} />} />
+              {/* Step 6 & 7: Gameplay Screens */}
+              <Route path="/game/modak-rush" element={<ModakRush player={player} />} />
+              <Route path="/game/diya-dash" element={<DiyaDash player={player} />} />
+              <Route path="/game/dhol-battle" element={<DholBattle player={player} />} />
+              <Route path="/game/rangoli-rush" element={<RangoliRush player={player} />} />
+              <Route path="/game/mushak-maze" element={<MushakMaze player={player} />} />
+              <Route path="/game/ganpati-logic" element={<GanpatiLogic player={player} />} />
+              <Route path="/blitz-mix" element={<BlitzMix player={player} />} />
 
-            {/* Result Screens */}
-            <Route path="/game/modak-rush/result" element={<ResultScreen gameId="modak-rush" player={player} />} />
-            <Route path="/game/:gameId/result" element={<ResultScreen player={player} />} />
+              {/* Result Screens */}
+              <Route path="/game/modak-rush/result" element={<ResultScreen gameId="modak-rush" player={player} />} />
+              <Route path="/game/:gameId/result" element={<ResultScreen player={player} />} />
 
-            {/* Core Platforms */}
-            <Route path="/leaderboard" element={<Leaderboard />} />
-            <Route path="/leaderboard/:gameId" element={<Leaderboard />} />
-            <Route path="/daily-challenge" element={<DailyChallenge />} />
-            <Route path="/profile" element={<ProfilePage player={player} onPlayerSetup={handlePlayerSetup} />} />
-            <Route path="/settings" element={<Settings onLogout={handleLogout} />} />
-            <Route path="/player" element={<PlayerSetupPage onSetup={handlePlayerSetup} />} />
-            <Route path="/achievements" element={<Achievements />} />
+              {/* Core Platforms */}
+              <Route path="/leaderboard" element={<Leaderboard />} />
+              <Route path="/leaderboard/:gameId" element={<Leaderboard />} />
+              <Route path="/daily-challenge" element={<DailyChallenge />} />
+              <Route path="/profile" element={<ProfilePage player={player} onPlayerSetup={handlePlayerSetup} />} />
+              <Route path="/settings" element={<Settings onLogout={handleLogout} />} />
+              <Route path="/player" element={<PlayerSetupPage onSetup={handlePlayerSetup} />} />
+              <Route path="/achievements" element={<Achievements />} />
 
-            {/* Multiplayer Flow */}
-            <Route path="/multiplayer" element={<MultiplayerPage player={player} />} />
-            <Route path="/multiplayer/friend" element={<FriendRoomPage player={player} onPlayerSetup={handlePlayerSetup} />} />
-            <Route path="/multiplayer/waiting" element={<WaitingRoomPage player={player} onPlayerSetup={handlePlayerSetup} />} />
-            <Route path="/multiplayer/game" element={<MultiplayerGame player={player} />} />
-            <Route path="/multiplayer/result" element={<MatchResultPage player={player} />} />
-            <Route path="/multiplayer/quick-match" element={<QuickMatchPage player={player} />} />
-            <Route path="/multiplayer/history" element={<MatchHistoryPage player={player} />} />
+              {/* Multiplayer Flow */}
+              <Route path="/multiplayer" element={<MultiplayerPage player={player} />} />
+              <Route path="/multiplayer/friend" element={<FriendRoomPage player={player} onPlayerSetup={handlePlayerSetup} />} />
+              <Route path="/multiplayer/waiting" element={<WaitingRoomPage player={player} onPlayerSetup={handlePlayerSetup} />} />
+              <Route path="/multiplayer/game" element={<MultiplayerGame player={player} />} />
+              <Route path="/multiplayer/result" element={<MatchResultPage player={player} />} />
+              <Route path="/multiplayer/quick-match" element={<QuickMatchPage player={player} />} />
+              <Route path="/multiplayer/history" element={<MatchHistoryPage player={player} />} />
 
-            {/* Clean Redirects */}
-            <Route path="/how-to-play" element={<Navigate to="/games" replace />} />
-            <Route path="/stats" element={<Navigate to="/profile" replace />} />
-            <Route path="/multiplayer/leaderboard" element={<Navigate to="/leaderboard" replace />} />
-            <Route path="*" element={<Navigate to="/" replace />} />
-          </Routes>
-        </Suspense>
+              {/* Clean Redirects */}
+              <Route path="/how-to-play" element={<Navigate to="/games" replace />} />
+              <Route path="/stats" element={<Navigate to="/profile" replace />} />
+              <Route path="/multiplayer/leaderboard" element={<Navigate to="/leaderboard" replace />} />
+              <Route path="*" element={<Navigate to="/" replace />} />
+            </Routes>
+          </Suspense>
+        </ErrorBoundary>
       </main>
       <Analytics />
     </div>

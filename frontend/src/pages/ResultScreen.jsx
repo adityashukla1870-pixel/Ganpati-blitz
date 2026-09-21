@@ -159,8 +159,9 @@ export default function ResultScreen(props) {
     if (submittedRef.current) return
     submittedRef.current = true
 
-    if (player?.player_id && score > 0 && !result) {
-      submitScore(player.player_id, score, stats?.duration || 30, {
+    const pid = player?.player_id || player?.id
+    if (pid && score > 0 && !result) {
+      submitScore(pid, score, stats?.duration || 30, {
         game_id: gameId,
         difficulty,
         stats,
@@ -556,7 +557,7 @@ export default function ResultScreen(props) {
                 Universal Points
               </div>
               <div style={{ fontSize: '1.25rem', fontWeight: 900, color: '#FFF', fontFamily: 'var(--font-mono)' }}>
-                +{computedUP.totalUP ?? computedUP} <span style={{ fontSize: '0.75rem', color: '#FFD700' }}>UP</span>
+                +{typeof computedUP === 'object' ? (computedUP.totalUP ?? 0) : computedUP} <span style={{ fontSize: '0.75rem', color: '#FFD700' }}>UP</span>
               </div>
             </div>
           </div>
