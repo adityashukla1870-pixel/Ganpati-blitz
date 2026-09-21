@@ -10,6 +10,7 @@ import { getBestScore, setBestScore, getSoundEnabled, setSoundEnabled, getPlayer
 import { getSelectedDifficulty, setSelectedDifficulty, recordGameResult, getTierBestScore } from '../../utils/progression';
 import { DIFFICULTY_TIERS } from '../../config/difficulties';
 import { submitScore } from '../../services/api';
+import { triggerHaptic } from '../../utils/haptics';
 
 const GAME_DURATION = 40;
 
@@ -243,6 +244,7 @@ export default function DholBattle({ player }) {
         setCombo(0);
         addFeedbackText('MISS', '#EF4444');
         playSound('miss');
+        triggerHaptic('warning');
         setLaneFlashes((prev) => {
           const next = [...prev];
           next[laneIndex] = 'miss';
@@ -280,6 +282,7 @@ export default function DholBattle({ player }) {
         setScore(total);
         addFeedbackText('DEMON BEAT!', '#DC2626');
         playSound('demon');
+        triggerHaptic('danger');
         statsRef.current.miss++;
         setStats({ ...statsRef.current });
         setLaneFlashes((prev) => {
@@ -307,9 +310,11 @@ export default function DholBattle({ player }) {
         pts = 100;
         color = '#FFD700';
         playSound('perfect');
+        triggerHaptic('success');
         statsRef.current.perfect++;
       } else {
         playSound('good');
+        triggerHaptic('light');
         statsRef.current.good++;
       }
 

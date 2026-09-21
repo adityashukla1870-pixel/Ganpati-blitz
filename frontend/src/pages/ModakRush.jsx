@@ -11,6 +11,7 @@ import PauseOverlay from '../components/PauseOverlay'
 import { getSoundEnabled, setSoundEnabled } from '../utils/storage'
 import { getSelectedDifficulty, setSelectedDifficulty, recordGameResult } from '../utils/progression'
 import { DIFFICULTY_TIERS } from '../config/difficulties'
+import { triggerHaptic, playJuicyAudio } from '../utils/haptics'
 
 const GAME_DURATION = 30
 
@@ -219,6 +220,7 @@ export default function ModakRush({ player }) {
   const [screenShake, setScreenShake] = useState(false)
   const [objects, setObjects] = useState([])
   const [popups, setPopups] = useState([])
+  const [particles, setParticles] = useState([])
   const [stats, setStats] = useState({
     modaksCollected: 0,
     goldenCollected: 0,
@@ -243,6 +245,38 @@ export default function ModakRush({ player }) {
 
   const tier = TIER_PARAMS[difficulty] || TIER_PARAMS.normal
   const diffMultiplier = DIFFICULTY_TIERS[difficulty]?.multiplier || 1.5
+
+  const spawnParticles = useCallback((x, y, type) => {
+    const isGolden = type === 'golden' || type === 'kesar'
+    const isDanger = type === 'danger' || type === 'decoy'
+    const count = isGolden ? 7 : isDanger ? 5 : 4
+
+    const emojis = isGolden
+      ? ['✨', '⭐', '🥟', '🪷']
+      : isDanger
+        ? ['💥', '🔥', '💀']
+        : ['✨', '🥟', '🪷']
+
+    const newParticles = []
+    for (let i = 0; i < count; i++) {
+      const angle = (i / count) * 2 * Math.PI + (Math.random() - 0.5) * 0.4
+      const dist = (isGolden ? 45 : 32) + Math.random() * 22
+      newParticles.push({
+        id: Math.random() + Date.now(),
+        x,
+        y,
+        dx: Math.cos(angle) * dist,
+        dy: Math.sin(angle) * dist,
+        emoji: emojis[Math.floor(Math.random() * emojis.length)],
+        size: isGolden ? 20 : 15,
+      })
+    }
+
+    setParticles((prev) => [...prev, ...newParticles])
+    setTimeout(() => {
+      setParticles((prev) => prev.filter((p) => !newParticles.includes(p)))
+    }, 650)
+  }, [])
 
   useEffect(() => {
     if (!player) navigate('/player')
@@ -275,6 +309,7 @@ export default function ModakRush({ player }) {
     objectsRef.current = []
     setObjects([])
     setPopups([])
+    setParticles([])
   }, [])
 
   useEffect(() => {
@@ -430,38 +465,70 @@ export default function ModakRush({ player }) {
         points = Math.round(typeInfo.points * mult)
         newStats.modaksCollected++
         if (isFrenzy) newStats.frenzyModaks++
+        triggerHaptic('light')
+        playJuicyAudio(newCombo, 'classic', isSoundEnabled)
+        spawnParticles(obj.x, obj.y, 'classic')
       } else if (obj.type === 'golden') {
         newCombo++
         const mult = getComboMultiplier(newCombo) * (isFrenzy ? 2 : 1)
         points = Math.round(typeInfo.points * mult)
         newStats.modaksCollected++
         newStats.goldenCollected++
+        triggerHaptic('success')
+        playJuicyAudio(newCombo, 'golden', isSoundEnabled)
+        spawnParticles(obj.x, obj.y, 'golden')
+        setScreenShake(true)
+        setTimeout(() => setScreenShake(false), 200)
       } else if (obj.type === 'silver') {
         newCombo++
         const mult = getComboMultiplier(newCombo) * (isFrenzy ? 2 : 1)
         points = Math.round(typeInfo.points * mult)
         newStats.modaksCollected++
+        triggerHaptic('medium')
+        playJuicyAudio(newCombo, 'silver', isSoundEnabled)
+        spawnParticles(obj.x, obj.y, 'silver')
       } else if (obj.type === 'kesar') {
         newCombo++
         const mult = getComboMultiplier(newCombo)
         points = Math.round(typeInfo.points * mult)
         newStats.modaksCollected++
         triggerFrenzy()
+        triggerHaptic('success')
+        playJuicyAudio(newCombo, 'kesar', isSoundEnabled)
+        spawnParticles(obj.x, obj.y, 'kesar')
+        setScreenShake(true)
+        setTimeout(() => setScreenShake(false), 250)
       } else if (obj.type === 'decoy') {
         points = typeInfo.points
         newCombo = 0
+        triggerHaptic('warning')
+        playJuicyAudio(0, 'decoy', isSoundEnabled)
+        spawnParticles(obj.x, obj.y, 'decoy')
         setScreenShake(true)
         setTimeout(() => setScreenShake(false), 300)
       } else if (obj.type === 'burnt') {
         points = typeInfo.points
         newCombo = 0
         newStats.burntCollected++
+        triggerHaptic('warning')
+        playJuicyAudio(0, 'burnt', isSoundEnabled)
+        spawnParticles(obj.x, obj.y, 'burnt')
       } else if (obj.type === 'danger') {
         points = typeInfo.points
         newCombo = 0
         newStats.dangerHit++
+        triggerHaptic('danger')
+        playJuicyAudio(0, 'danger', isSoundEnabled)
+        spawnParticles(obj.x, obj.y, 'danger')
         setScreenShake(true)
         setTimeout(() => setScreenShake(false), 400)
+      }
+
+      // 10x Combo Super Burst
+      if (newCombo === 10) {
+        triggerHaptic('success')
+        setScreenShake(true)
+        setTimeout(() => setScreenShake(false), 350)
       }
 
       comboRef.current = newCombo
@@ -478,6 +545,15 @@ export default function ModakRush({ player }) {
 
       const color =
         points > 0 ? (obj.type === 'golden' ? '#FFD700' : obj.type === 'kesar' ? '#F59E0B' : '#4ADE80') : '#EF4444'
+
+      let popupText = points > 0 ? `+${points}` : `${points}`
+      if (obj.type === 'golden') popupText = `⭐ +${points} GOLDEN!`
+      else if (obj.type === 'kesar') popupText = `🔥 FRENZY 2X!`
+      else if (newCombo >= 10 && points > 0) popupText = `✨ +${points} BLESSING!`
+      else if (newCombo >= 5 && points > 0) popupText = `⚡ +${points} (${newCombo}x)`
+      else if (obj.type === 'danger') popupText = `💀 ${points} DANGER!`
+      else if (obj.type === 'decoy') popupText = `❌ ${points} DECOY!`
+
       const popupId = Date.now() + Math.random()
       setPopups((prev) => [
         ...prev,
@@ -485,8 +561,9 @@ export default function ModakRush({ player }) {
           id: popupId,
           x: obj.x,
           y: obj.y,
-          text: points > 0 ? `+${points}` : `${points}`,
+          text: popupText,
           color,
+          isSpecial: obj.type === 'golden' || obj.type === 'kesar' || newCombo >= 5,
         },
       ])
 
@@ -494,7 +571,7 @@ export default function ModakRush({ player }) {
         setPopups((prev) => prev.filter((p) => p.id !== popupId))
       }, 850)
     },
-    [diffMultiplier, maxCombo, triggerFrenzy]
+    [diffMultiplier, isSoundEnabled, maxCombo, spawnParticles, triggerFrenzy]
   )
 
   const handleStart = useCallback(() => {
@@ -542,6 +619,15 @@ export default function ModakRush({ player }) {
         animation: screenShake ? 'shake 0.3s ease-in-out' : undefined,
       }}
     >
+      <style>{`
+        @keyframes shake {
+          0%, 100% { transform: translate(0, 0) scale(1); }
+          20% { transform: translate(-4px, 3px) scale(1.01); }
+          40% { transform: translate(4px, -3px) scale(1.008); }
+          60% { transform: translate(-3px, 2px) scale(1); }
+          80% { transform: translate(2px, -1px) scale(1); }
+        }
+      `}</style>
       {/* Frenzy Banner */}
       <AnimatePresence>
         {frenzyTimer > 0 && (
@@ -718,13 +804,37 @@ export default function ModakRush({ player }) {
           })}
         </AnimatePresence>
 
-        {/* Score popups */}
+        {/* Burst Particles */}
+        <AnimatePresence>
+          {particles.map((p) => (
+            <motion.div
+              key={p.id}
+              initial={{ opacity: 1, scale: 0.8, x: 0, y: 0 }}
+              animate={{ opacity: 0, scale: 1.4, x: p.dx, y: p.dy }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.6, ease: 'easeOut' }}
+              style={{
+                position: 'absolute',
+                left: `${p.x}%`,
+                top: `${p.y}%`,
+                fontSize: `${p.size}px`,
+                pointerEvents: 'none',
+                zIndex: 45,
+                filter: 'drop-shadow(0 0 6px rgba(255,215,0,0.7))',
+              }}
+            >
+              {p.emoji}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+
+        {/* Juicy Score popups */}
         <AnimatePresence>
           {popups.map((popup) => (
             <motion.div
               key={popup.id}
-              initial={{ opacity: 1, y: 0, scale: 1 }}
-              animate={{ opacity: 0, y: -60, scale: 1.3 }}
+              initial={{ opacity: 1, y: 0, scale: 0.8 }}
+              animate={{ opacity: 0, y: -65, scale: popup.isSpecial ? 1.4 : 1.15 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.85, ease: 'easeOut' }}
               style={{
@@ -732,13 +842,16 @@ export default function ModakRush({ player }) {
                 left: `${popup.x}%`,
                 top: `${popup.y}%`,
                 transform: 'translateX(-50%)',
-                fontSize: '1.4rem',
+                fontSize: popup.isSpecial ? '1.45rem' : '1.25rem',
                 fontWeight: 900,
                 color: popup.color,
                 pointerEvents: 'none',
-                textShadow: '0 2px 8px rgba(0,0,0,0.8)',
+                textShadow: popup.isSpecial
+                  ? '0 0 14px rgba(255,215,0,0.8), 0 2px 8px rgba(0,0,0,0.9)'
+                  : '0 2px 8px rgba(0,0,0,0.85)',
                 zIndex: 50,
                 fontFamily: 'var(--font-mono)',
+                whiteSpace: 'nowrap',
               }}
             >
               {popup.text}

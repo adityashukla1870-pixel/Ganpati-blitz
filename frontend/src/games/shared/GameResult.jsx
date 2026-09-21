@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -19,6 +19,9 @@ import { DIFFICULTY_TIERS, DIFFICULTY_ORDER } from '../../config/difficulties'
 import { estimateUniversalPoints } from '../../config/universalPoints'
 import { GAME_LIST } from '../../config/games'
 import { isTierUnlocked } from '../../utils/progression'
+import { getPlayer } from '../../utils/storage'
+import { getNearMissInfo, getNextRivalTarget } from '../../utils/rivalry'
+import { triggerHaptic } from '../../utils/haptics'
 
 const GAME_IDS = ['modak-rush', 'diya-dash', 'dhol-battle', 'rangoli-rush', 'mushak-maze', 'ganpati-logic']
 
@@ -48,6 +51,26 @@ export default function GameResult({
   const playAgain = onPlayAgain || onRestart
   const resolvedBest = bestScore ?? previousBest ?? 0
   const tierConfig = DIFFICULTY_TIERS[difficulty] || DIFFICULTY_TIERS.normal
+
+  const player = useMemo(() => getPlayer(), [])
+  const nearMiss = useMemo(() => getNearMissInfo(score, resolvedBest), [score, resolvedBest])
+  const rival = useMemo(() => getNextRivalTarget(player?.player_id || player?.id, computedUP?.totalUP), [player, computedUP])
+
+  const handlePlayAgainClick = useCallback(() => {
+    triggerHaptic('light')
+    playAgain?.()
+  }, [playAgain])
+
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.code === 'Space' || e.key === 'Enter') {
+        e.preventDefault()
+        handlePlayAgainClick()
+      }
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [handlePlayAgainClick])
 
   // Next game in arcade sequence
   const currentIndex = GAME_IDS.indexOf(gameId)
@@ -244,6 +267,88 @@ export default function GameResult({
           </div>
         </div>
 
+        {/* Near-Miss Alert Banner (if not PB and within reach) */}
+        {!isPersonalBest && nearMiss?.isNearMiss && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            style={{
+              background: 'linear-gradient(135deg, rgba(245, 158, 11, 0.2) 0%, rgba(255, 107, 53, 0.15) 100%)',
+              border: '1.5px solid rgba(245, 158, 11, 0.55)',
+              borderRadius: 'var(--radius-md, 10px)',
+              padding: '10px 14px',
+              width: '100%',
+              boxSizing: 'border-box',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 6,
+              marginBottom: '0.85rem',
+              boxShadow: '0 4px 16px rgba(245, 158, 11, 0.18)',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem', fontWeight: 800, color: '#FBBF24' }}>
+                <Zap size={15} /> SO CLOSE TO HIGH SCORE!
+              </div>
+              <span style={{ fontSize: '0.75rem', fontWeight: 800, color: '#FCD34D', fontFamily: 'var(--font-mono)' }}>
+                {nearMiss.pct}% of PB
+              </span>
+            </div>
+            <div style={{ fontSize: '0.8rem', color: '#FFF', fontWeight: 600, textAlign: 'left' }}>
+              {nearMiss.message}
+            </div>
+            <div style={{ width: '100%', height: 5, borderRadius: 3, background: 'rgba(255,255,255,0.1)', overflow: 'hidden' }}>
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${nearMiss.pct}%` }}
+                transition={{ duration: 0.8, ease: 'easeOut' }}
+                style={{ height: '100%', background: 'linear-gradient(90deg, #F59E0B, #FFD700)', borderRadius: 3 }}
+              />
+            </div>
+          </motion.div>
+        )}
+
+        {/* Leaderboard Next Rival Target Card */}
+        {rival && !rival.isChampion && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            style={{
+              background: 'rgba(15, 23, 42, 0.65)',
+              border: '1px solid rgba(255, 215, 0, 0.28)',
+              borderRadius: 'var(--radius-md, 10px)',
+              padding: '9px 12px',
+              width: '100%',
+              boxSizing: 'border-box',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'space-between',
+              gap: 10,
+              marginBottom: '0.85rem',
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
+              <div style={{ fontSize: '1.25rem', width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,215,0,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+                {rival.rivalAvatar}
+              </div>
+              <div style={{ minWidth: 0, textAlign: 'left' }}>
+                <div style={{ fontSize: '0.65rem', color: '#FBBF24', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em' }}>
+                  🎯 Next Rival Target (#{rival.rivalRank})
+                </div>
+                <div style={{ fontSize: '0.82rem', fontWeight: 700, color: '#FFF', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                  Catch {rival.rivalName}
+                </div>
+              </div>
+            </div>
+            <div style={{ textAlign: 'right', flexShrink: 0 }}>
+              <div style={{ fontSize: '0.95rem', fontWeight: 900, color: '#FFD700', fontFamily: 'var(--font-mono)' }}>
+                -{rival.upGap} <span style={{ fontSize: '0.65rem' }}>UP</span>
+              </div>
+              <div style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>Gap to beat</div>
+            </div>
+          </motion.div>
+        )}
+
         {/* Universal Points Award Card */}
         <div
           style={{
@@ -390,10 +495,28 @@ export default function GameResult({
           <motion.button
             whileHover={{ scale: 1.03, y: -2 }}
             whileTap={{ scale: 0.97 }}
-            onClick={playAgain}
-            style={styles.primaryActionBtn}
+            animate={{
+              boxShadow: [
+                '0 0 16px rgba(255,153,51,0.4), 0 4px 14px rgba(0,0,0,0.3)',
+                '0 0 28px rgba(255,215,0,0.65), 0 4px 16px rgba(0,0,0,0.4)',
+                '0 0 16px rgba(255,153,51,0.4), 0 4px 14px rgba(0,0,0,0.3)',
+              ],
+            }}
+            transition={{ repeat: Infinity, duration: 2, ease: 'easeInOut' }}
+            onClick={handlePlayAgainClick}
+            style={{
+              ...styles.primaryActionBtn,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 8,
+            }}
           >
-            <RotateCcw size={18} /> PLAY AGAIN
+            <RotateCcw size={18} />
+            <span>PLAY AGAIN</span>
+            <span style={{ fontSize: '0.72rem', opacity: 0.75, fontWeight: 600, background: 'rgba(0,0,0,0.2)', padding: '2px 7px', borderRadius: 4 }}>
+              Space / Enter
+            </span>
           </motion.button>
 
           {/* SECONDARY: TRY HIGHER DIFFICULTY */}
