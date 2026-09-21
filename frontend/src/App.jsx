@@ -24,8 +24,9 @@ import QuickMatchPage from './pages/QuickMatchPage'
 import MatchHistoryPage from './pages/MatchHistoryPage'
 import Leaderboard from './pages/Leaderboard'
 import ErrorBoundary from './components/ErrorBoundary'
-import { getSoundEnabled, setSoundEnabled } from './utils/storage'
+import { getSoundEnabled, setSoundEnabled, setUniversalPoints } from './utils/storage'
 import { warmUpBackend } from './services/socket'
+import { getProfile } from './services/api'
 
 const ModakRush = lazy(() => import('./pages/ModakRush'))
 const DiyaDash = lazy(() => import('./games/diyaDash/DiyaDash'))
@@ -94,19 +95,62 @@ export default function App() {
       try {
         const parsed = JSON.parse(saved)
         setPlayer(parsed)
-        if (parsed.universal_points !== undefined) {
-          localStorage.setItem('ganpati_universal_points', String(parsed.universal_points))
+        const localUP = parseInt(localStorage.getItem('ganpati_universal_points') || '0', 10)
+        const initialUP = Math.max(localUP, Number(parsed.universal_points || 0))
+        if (initialUP > 0) {
+          localStorage.setItem('ganpati_universal_points', String(initialUP))
+        }
+
+        // Asynchronously fetch latest authoritative stats from server
+        const pid = parsed.player_id || parsed.id
+        if (pid) {
+          getProfile(pid)
+            .then((prof) => {
+              if (prof?.player) {
+                const authoritativeUP = prof.player.universal_points ?? prof.competitive?.universal_points ?? initialUP
+                const updated = {
+                  ...parsed,
+                  ...prof.player,
+                  universal_points: authoritativeUP,
+                  progression: prof.progression,
+                }
+                setPlayer(updated)
+                localStorage.setItem('ganpati_player', JSON.stringify(updated))
+                setUniversalPoints(authoritativeUP)
+              }
+            })
+            .catch(() => {})
         }
       } catch (_) {
         localStorage.removeItem('ganpati_player')
       }
+    }
+
+    const onPointsUpdated = (e) => {
+      if (e.detail?.universal_points !== undefined) {
+        setPlayer((prev) => (prev ? { ...prev, universal_points: e.detail.universal_points } : prev))
+      }
+    }
+
+    const onPlayerUpdated = (e) => {
+      if (e.detail?.player) {
+        setPlayer((prev) => ({ ...(prev || {}), ...e.detail.player }))
+      }
+    }
+
+    window.addEventListener('ganpati_points_updated', onPointsUpdated)
+    window.addEventListener('ganpati_player_updated', onPlayerUpdated)
+
+    return () => {
+      window.removeEventListener('ganpati_points_updated', onPointsUpdated)
+      window.removeEventListener('ganpati_player_updated', onPlayerUpdated)
     }
   }, [])
 
   const handlePlayerSetup = (playerData) => {
     localStorage.setItem('ganpati_player', JSON.stringify(playerData))
     if (playerData.universal_points !== undefined) {
-      localStorage.setItem('ganpati_universal_points', String(playerData.universal_points))
+      setUniversalPoints(playerData.universal_points)
     }
     setPlayer(playerData)
   }

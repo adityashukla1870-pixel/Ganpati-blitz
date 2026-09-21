@@ -18,16 +18,22 @@ export const clearPlayer = () => {
 export const getUniversalPoints = () => {
   const p = getPlayer()
   const localUP = parseInt(localStorage.getItem('ganpati_universal_points') || '0', 10)
-  return Number(p?.universal_points ?? localUP ?? 0)
+  return Math.max(Number(p?.universal_points || 0), localUP)
 }
 
 export const setUniversalPoints = (points) => {
-  const num = Number(points || 0)
+  const num = Math.max(0, Math.round(Number(points || 0)))
   localStorage.setItem('ganpati_universal_points', String(num))
   const p = getPlayer()
   if (p) {
     p.universal_points = num
     setPlayer(p)
+  }
+  if (typeof window !== 'undefined') {
+    window.dispatchEvent(new CustomEvent('ganpati_points_updated', { detail: { universal_points: num } }))
+    if (p) {
+      window.dispatchEvent(new CustomEvent('ganpati_player_updated', { detail: { player: p } }))
+    }
   }
 }
 

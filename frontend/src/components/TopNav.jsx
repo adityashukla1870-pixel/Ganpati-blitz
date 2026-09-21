@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
@@ -19,19 +19,55 @@ import {
 } from 'lucide-react'
 import { LogoIcon } from './Logo'
 import { getRankTier } from '../config/universalPoints'
+import { calculateProgression } from '../utils/progression'
 import PlayerAvatar from './PlayerAvatar'
 
 export default function TopNav({ player, soundEnabled, onSoundToggle }) {
   const location = useLocation()
   const navigate = useNavigate()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [universalPoints, setUniversalPoints] = useState(0)
-
-  // Sync UP from storage or player prop
-  useEffect(() => {
+  const [universalPoints, setUniversalPoints] = useState(() => {
     const localUP = parseInt(localStorage.getItem('ganpati_universal_points') || '0', 10)
-    setUniversalPoints(localUP)
-  }, [location.pathname])
+    return Math.max(localUP, Number(player?.universal_points || 0))
+  })
+
+  // Sync UP reactively from storage, custom events, or player prop
+  useEffect(() => {
+    const syncUP = () => {
+      const localUP = parseInt(localStorage.getItem('ganpati_universal_points') || '0', 10)
+      const storedPlayer = JSON.parse(localStorage.getItem('ganpati_player') || 'null')
+      const effective = Math.max(localUP, Number(storedPlayer?.universal_points || 0), Number(player?.universal_points || 0))
+      setUniversalPoints(effective)
+    }
+
+    syncUP()
+
+    const onPointsUpdated = (e) => {
+      if (e.detail?.universal_points !== undefined) {
+        setUniversalPoints((prev) => Math.max(prev, Number(e.detail.universal_points)))
+      } else {
+        syncUP()
+      }
+    }
+
+    const onPlayerUpdated = (e) => {
+      if (e.detail?.player?.universal_points !== undefined) {
+        setUniversalPoints((prev) => Math.max(prev, Number(e.detail.player.universal_points)))
+      } else {
+        syncUP()
+      }
+    }
+
+    window.addEventListener('ganpati_points_updated', onPointsUpdated)
+    window.addEventListener('ganpati_player_updated', onPlayerUpdated)
+    window.addEventListener('storage', syncUP)
+
+    return () => {
+      window.removeEventListener('ganpati_points_updated', onPointsUpdated)
+      window.removeEventListener('ganpati_player_updated', onPlayerUpdated)
+      window.removeEventListener('storage', syncUP)
+    }
+  }, [location.pathname, player?.universal_points])
 
   // Close mobile menu on route change
   useEffect(() => {
@@ -51,8 +87,17 @@ export default function TopNav({ player, soundEnabled, onSoundToggle }) {
     return null
   }
 
-  const currentUP = player?.universal_points ?? universalPoints
+  const currentUP = Math.max(Number(player?.universal_points || 0), Number(universalPoints || 0))
   const tier = getRankTier(currentUP)
+
+  // Compute live level and XP progress
+  const progression = useMemo(() => {
+    if (player?.progression?.level) {
+      return player.progression
+    }
+    const xp = player?.total_xp || player?.xp || Math.max(currentUP, 50)
+    return calculateProgression(xp)
+  }, [player, currentUP])
 
   const isPlayActive =
     pathname === '/games' ||
@@ -144,14 +189,17 @@ export default function TopNav({ player, soundEnabled, onSoundToggle }) {
           </Link>
 
           {/* XP & Level Badge */}
-          {player ? (
-            <div style={styles.levelBadge} title={`Level ${player.level || 1} (${player.xp || 0}/${player.xpNext || 100} XP)`}>
-              <span style={styles.levelText}>Lv.{player.level || 1}</span>
+          {player || currentUP > 0 ? (
+            <div
+              style={styles.levelBadge}
+              title={`Level ${progression.level} (${progression.progress_xp}/${progression.progress_required} XP)`}
+            >
+              <span style={styles.levelText}>Lv.{progression.level}</span>
               <div style={styles.xpBarBg}>
                 <div
                   style={{
                     ...styles.xpBarFill,
-                    width: `${Math.min(100, (((player.xp || 0) / (player.xpNext || 100)) * 100))}%`,
+                    width: `${Math.min(100, Math.max(8, Math.round((progression.progress_xp / Math.max(1, progression.progress_required)) * 100)))}%`,
                   }}
                 />
               </div>
@@ -306,7 +354,7 @@ export default function TopNav({ player, soundEnabled, onSoundToggle }) {
                       fontWeight: 700,
                     }}
                   >
-                    Lv.{player.level || 1}
+                    Lv.{progression.level}
                   </div>
                 </div>
               </div>

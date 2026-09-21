@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { AlertCircle } from 'lucide-react'
 import ResultCard from '../components/ResultCard'
 import { submitScore } from '../services/api'
-import { setBestScore } from '../utils/storage'
+import { setBestScore, setUniversalPoints } from '../utils/storage'
 
 export default function Result({ player }) {
   const navigate = useNavigate()
@@ -30,11 +30,14 @@ export default function Result({ player }) {
     const submit = async () => {
       setSubmissionStatus('submitting')
       try {
-        await submitScore(player.player_id, state.score, state.duration, {
+        const res = await submitScore(player.player_id, state.score, state.duration, {
           game_id: 'modak-rush',
           stats: state.stats,
           maxCombo: state.maxCombo,
         })
+        if (res?.new_universal_points !== undefined) {
+          setUniversalPoints(res.new_universal_points)
+        }
         setSubmissionStatus('success')
       } catch (err) {
         setSubmissionStatus('error')

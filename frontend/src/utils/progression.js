@@ -122,3 +122,45 @@ export function recordGameResult(gameId, tierId, score) {
     currentScore: numScore,
   }
 }
+
+export const XP_THRESHOLDS = [0, 100, 250, 450, 700, 1000, 1400, 1850, 2350, 3000]
+
+/**
+ * Calculates level, current level xp, next level xp and progress percentage
+ */
+export function calculateProgression(totalXp) {
+  const safeXp = Math.max(0, Math.round(Number(totalXp) || 0))
+  let level = 1
+  for (let i = 0; i < XP_THRESHOLDS.length; i++) {
+    if (safeXp >= XP_THRESHOLDS[i]) {
+      level = i + 1
+    } else {
+      break
+    }
+  }
+  if (level === XP_THRESHOLDS.length && safeXp >= XP_THRESHOLDS[XP_THRESHOLDS.length - 1]) {
+    level += Math.floor((safeXp - XP_THRESHOLDS[XP_THRESHOLDS.length - 1]) / 500)
+  }
+
+  let currentThreshold, nextThreshold
+  if (level < XP_THRESHOLDS.length) {
+    currentThreshold = XP_THRESHOLDS[level - 1]
+    nextThreshold = XP_THRESHOLDS[level]
+  } else {
+    currentThreshold = XP_THRESHOLDS[XP_THRESHOLDS.length - 1] + (level - XP_THRESHOLDS.length) * 500
+    nextThreshold = currentThreshold + 500
+  }
+
+  const progressXp = Math.max(0, safeXp - currentThreshold)
+  const progressRequired = Math.max(1, nextThreshold - currentThreshold)
+
+  return {
+    level,
+    total_xp: safeXp,
+    current_level_xp: currentThreshold,
+    next_level_xp: nextThreshold,
+    progress_xp: progressXp,
+    progress_required: progressRequired,
+  }
+}
+

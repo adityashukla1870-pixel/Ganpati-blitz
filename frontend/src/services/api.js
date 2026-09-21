@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { setUniversalPoints, getPlayer, setPlayer } from '../utils/storage'
 
 const defaultApiUrl = import.meta.env.PROD
   ? 'https://ganpati-blitz.onrender.com'
@@ -48,6 +49,25 @@ export const submitScore = async (playerId, score, duration, gameData = {}) => {
     stats: gameData.stats || gameData,
     game_data: gameData,
   })
+
+  if (res?.data) {
+    if (res.data.new_universal_points !== undefined) {
+      setUniversalPoints(res.data.new_universal_points)
+    }
+    if (res.data.progression) {
+      const p = getPlayer()
+      if (p) {
+        p.progression = res.data.progression
+        p.level = res.data.progression.level
+        p.total_xp = res.data.progression.total_xp
+        setPlayer(p)
+        if (typeof window !== 'undefined') {
+          window.dispatchEvent(new CustomEvent('ganpati_player_updated', { detail: { player: p } }))
+        }
+      }
+    }
+  }
+
   return res.data
 }
 

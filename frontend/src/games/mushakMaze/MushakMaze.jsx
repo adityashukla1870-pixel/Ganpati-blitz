@@ -6,7 +6,7 @@ import Countdown from '../../components/Countdown';
 import GameResult from '../shared/GameResult';
 import DifficultySelector from '../../components/DifficultySelector';
 import PauseOverlay from '../../components/PauseOverlay';
-import { getBestScore, getSoundEnabled, setSoundEnabled } from '../../utils/storage';
+import { getBestScore, getSoundEnabled, setSoundEnabled, setUniversalPoints } from '../../utils/storage';
 import { getSelectedDifficulty, setSelectedDifficulty, recordGameResult, getTierBestScore } from '../../utils/progression';
 import { DIFFICULTY_TIERS } from '../../config/difficulties';
 import { submitScore } from '../../services/api';
@@ -305,7 +305,13 @@ export default function MushakMaze({ player }) {
         game_id: 'mushak-maze',
         difficulty,
         mazes_completed: eng.stage,
-      }).catch(() => {});
+      })
+        .then((res) => {
+          if (res?.new_universal_points !== undefined) {
+            setUniversalPoints(res.new_universal_points);
+          }
+        })
+        .catch(() => {});
     }
 
     setGameState('gameover');

@@ -20,7 +20,7 @@ import {
   Zap,
   Swords,
 } from 'lucide-react'
-import { getPlayer, setPlayer as savePlayerToStorage, getUniversalPoints } from '../utils/storage'
+import { getPlayer, setPlayer as savePlayerToStorage, getUniversalPoints, setUniversalPoints } from '../utils/storage'
 import { getProfile, getPlayerAchievements, getMatchHistory, updatePlayerAvatar } from '../services/api'
 import { getRankTier } from '../config/universalPoints'
 import PlayerAvatar from '../components/PlayerAvatar'
@@ -159,8 +159,12 @@ export default function ProfilePage({ player: playerProp, onPlayerSetup }) {
         setProfile(profRes.value)
         if (profRes.value.player) {
           const sPlayer = profRes.value.player
+          const authoritativeUP = sPlayer.universal_points ?? profRes.value.competitive?.universal_points
+          if (authoritativeUP !== undefined) {
+            setUniversalPoints(authoritativeUP)
+          }
           setPlayerState((prev) => {
-            const merged = { ...prev, ...sPlayer }
+            const merged = { ...prev, ...sPlayer, ...(authoritativeUP !== undefined ? { universal_points: authoritativeUP } : {}) }
             savePlayerToStorage(merged)
             return merged
           })

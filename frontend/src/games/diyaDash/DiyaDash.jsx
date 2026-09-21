@@ -6,7 +6,7 @@ import Countdown from '../../components/Countdown';
 import GameResult from '../shared/GameResult';
 import DifficultySelector from '../../components/DifficultySelector';
 import PauseOverlay from '../../components/PauseOverlay';
-import { getBestScore, setBestScore, getSoundEnabled, setSoundEnabled, getPlayer } from '../../utils/storage';
+import { getBestScore, setBestScore, getSoundEnabled, setSoundEnabled, getPlayer, setUniversalPoints } from '../../utils/storage';
 import { getSelectedDifficulty, setSelectedDifficulty, recordGameResult, getTierBestScore } from '../../utils/progression';
 import { DIFFICULTY_TIERS } from '../../config/difficulties';
 import { submitScore } from '../../services/api';
@@ -303,7 +303,13 @@ export default function DiyaDash({ player }) {
     setScore(finalTotal);
 
     if (player?.player_id) {
-      submitScore(player.player_id, finalTotal, 60 - remainingTime, { game_id: 'diya-dash' }).catch(() => {});
+      submitScore(player.player_id, finalTotal, 60 - remainingTime, { game_id: 'diya-dash' })
+        .then((res) => {
+          if (res?.new_universal_points !== undefined) {
+            setUniversalPoints(res.new_universal_points);
+          }
+        })
+        .catch(() => {});
     }
     setGameState('gameover');
   }, [clearTimeouts, remainingTime, diffMultiplier, difficulty, bestScore, player]);

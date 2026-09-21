@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { Check, Clock3, Home, Play, RotateCcw, Sparkles, Trophy, Star, Zap, Target, Brain, Flag, MousePointer, Award, AlertTriangle, Gamepad2, Timer } from 'lucide-react'
 import { submitScore } from '../services/api'
-import { getBestScore, getPlayer, setBestScore } from '../utils/storage'
+import { getBestScore, getPlayer, setBestScore, setUniversalPoints } from '../utils/storage'
 import { LogoSquare, LogoIcon } from '../components/Logo'
 
 const ROUND_SECONDS = 12
@@ -79,7 +79,10 @@ export default function BlitzMix() {
     if (!player?.player_id) return
     setSaving(true)
     try {
-      await submitScore(player.player_id, total, Math.max(1, Math.round((Date.now() - startedAt.current) / 1000)), { game_id: 'blitz-mix', session_id: sessionId.current, rounds: scores })
+      const res = await submitScore(player.player_id, total, Math.max(1, Math.round((Date.now() - startedAt.current) / 1000)), { game_id: 'blitz-mix', session_id: sessionId.current, rounds: scores })
+      if (res?.new_universal_points !== undefined) {
+        setUniversalPoints(res.new_universal_points)
+      }
       setMessage('Run saved. +50 XP awarded.')
     } catch (error) {
       setMessage(error.response?.data?.error || 'Your result could not be processed. Please try again.')

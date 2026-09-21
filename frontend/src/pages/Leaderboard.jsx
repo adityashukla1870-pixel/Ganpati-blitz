@@ -6,7 +6,7 @@ import { ArrowLeft, RefreshCw, Trophy, Crown, Sparkles, BookOpen, X, ChevronRigh
 import LeaderboardTable from '../components/LeaderboardTable'
 import LoadingScreen from '../components/LoadingScreen'
 import { getGlobalLeaderboard } from '../services/api'
-import { getPlayer } from '../utils/storage'
+import { getPlayer, setUniversalPoints } from '../utils/storage'
 import { getRankTier } from '../config/universalPoints'
 import PlayerAvatar from '../components/PlayerAvatar'
 import { GAMES, GAME_LIST } from '../config/games'
@@ -40,10 +40,9 @@ export default function Leaderboard() {
   })
   const currentPlayer = getPlayer()
   const playerId = currentPlayer?.player_id || currentPlayer?.id
-  const currentUP = Number(
-    currentPlayer?.universal_points ??
-    localStorage.getItem('ganpati_universal_points') ??
-    0
+  const currentUP = Math.max(
+    Number(currentPlayer?.universal_points || 0),
+    parseInt(localStorage.getItem('ganpati_universal_points') || '0', 10)
   )
 
   const fetchLeaderboard = async () => {
@@ -69,11 +68,9 @@ export default function Leaderboard() {
 
       if (data.player_card) {
         setPlayerCard(data.player_card)
-        // Sync local storage with server authoritative points
-        if (data.player_card.universal_points !== undefined && currentPlayer) {
-          currentPlayer.universal_points = data.player_card.universal_points
-          localStorage.setItem('ganpati_player', JSON.stringify(currentPlayer))
-          localStorage.setItem('ganpati_universal_points', String(data.player_card.universal_points))
+        // Sync local storage and reactive state with server authoritative points
+        if (data.player_card.universal_points !== undefined) {
+          setUniversalPoints(data.player_card.universal_points)
         }
       } else if (currentPlayer) {
         const inList = list.find((e) => e.player_id === playerId)
@@ -88,6 +85,9 @@ export default function Leaderboard() {
           global_rank: effectiveRank,
           tier: getRankTier(effectiveUP),
         })
+        if (inList && inList.universal_points !== undefined) {
+          setUniversalPoints(inList.universal_points)
+        }
       } else {
         setPlayerCard(null)
       }

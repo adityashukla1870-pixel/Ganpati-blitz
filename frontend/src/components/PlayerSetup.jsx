@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { User, School, ArrowRight, LogIn, UserPlus, Sparkles, CheckCircle2, Lock } from 'lucide-react'
 import Button from './Button'
 import { createPlayer, loginPlayer } from '../services/api'
+import { setUniversalPoints } from '../utils/storage'
 import { CAMPUSES, DEFAULT_CAMPUS } from '../config/campuses'
 import PlayerAvatar from './PlayerAvatar'
 import { AVATAR_LIST, resolveAvatarId } from '../config/avatars'
@@ -53,7 +54,7 @@ export default function PlayerSetup({ onSubmit, defaultMode = 'create' }) {
         )
         setSuccessMsg(`Welcome back, ${data.display_name}! Restoring your stats & rank...`)
         localStorage.setItem('ganpati_player', JSON.stringify(data))
-        localStorage.setItem('ganpati_universal_points', String(data.universal_points || 0))
+        setUniversalPoints(data.universal_points || 0)
         setTimeout(() => {
           onSubmit?.(data)
         }, 500)
@@ -61,7 +62,7 @@ export default function PlayerSetup({ onSubmit, defaultMode = 'create' }) {
         const data = await createPlayer(name.trim(), campus, avatar, pin.trim())
         setSuccessMsg(`Account created for ${data.display_name}! Entering game...`)
         localStorage.setItem('ganpati_player', JSON.stringify(data))
-        localStorage.setItem('ganpati_universal_points', String(data.universal_points || 0))
+        setUniversalPoints(data.universal_points || 0)
         setTimeout(() => {
           onSubmit?.(data)
         }, 500)

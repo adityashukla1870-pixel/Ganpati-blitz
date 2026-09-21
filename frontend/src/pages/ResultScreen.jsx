@@ -5,7 +5,7 @@ import { Trophy, RotateCcw, Home, Star, TrendingUp, TrendingDown, Gamepad2, Flag
 import { DIFFICULTY_TIERS } from '../config/difficulties'
 import { estimateUniversalPoints } from '../config/universalPoints'
 import { submitScore } from '../services/api'
-import { getPlayer } from '../utils/storage'
+import { getPlayer, setUniversalPoints } from '../utils/storage'
 import { getNearMissInfo, getNextRivalTarget } from '../utils/rivalry'
 import { triggerHaptic } from '../utils/haptics'
 import PlayerAvatar from '../components/PlayerAvatar'
@@ -168,7 +168,7 @@ export default function ResultScreen(props) {
       })
         .then((res) => {
           if (res?.new_universal_points !== undefined) {
-            localStorage.setItem('ganpati_universal_points', String(res.new_universal_points))
+            setUniversalPoints(res.new_universal_points)
           }
           if (res?.xp_awarded) {
             setServerXpEarned(res.xp_awarded)
