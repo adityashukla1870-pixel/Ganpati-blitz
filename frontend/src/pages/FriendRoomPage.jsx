@@ -5,6 +5,7 @@ import { ArrowLeft, Copy, Check, Users, LogIn, Plus, AlertCircle, RefreshCw, Wif
 import { v4 as uuidv4 } from 'uuid'
 import { getSocket, connectSocket, warmUpBackend, CONNECTION_STATES } from '../services/socket'
 import { GAMES } from '../config/games'
+import PlayerAvatar from '../components/PlayerAvatar'
 
 export default function FriendRoomPage({ player: playerProp, onPlayerSetup }) {
   const navigate = useNavigate()
@@ -77,7 +78,7 @@ export default function FriendRoomPage({ player: playerProp, onPlayerSetup }) {
       display_name: chosenName,
       name: chosenName,
       campus: 'Online Arena',
-      avatar: '🪷',
+      avatar: 'shree-ganesha',
       rating: 1000,
       universal_points: 0,
       is_guest: true,
@@ -374,22 +375,7 @@ export default function FriendRoomPage({ player: playerProp, onPlayerSetup }) {
           {player ? (
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem' }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: 0 }}>
-                <div
-                  style={{
-                    width: 42,
-                    height: 42,
-                    borderRadius: '50%',
-                    background: 'linear-gradient(135deg, #FF8C42, #FFD166)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '1.25rem',
-                    flexShrink: 0,
-                    boxShadow: '0 2px 10px rgba(255, 140, 66, 0.35)',
-                  }}
-                >
-                  {player.avatar || '🪷'}
-                </div>
+                <PlayerAvatar avatar={player.avatar} size={42} />
                 <div style={{ minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                     <span style={{ color: '#FFF', fontWeight: 800, fontSize: '0.95rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>

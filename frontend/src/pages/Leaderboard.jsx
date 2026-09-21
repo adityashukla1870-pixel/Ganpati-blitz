@@ -8,6 +8,7 @@ import LoadingScreen from '../components/LoadingScreen'
 import { getGlobalLeaderboard } from '../services/api'
 import { getPlayer } from '../utils/storage'
 import { getRankTier } from '../config/universalPoints'
+import PlayerAvatar from '../components/PlayerAvatar'
 import { GAMES, GAME_LIST } from '../config/games'
 import { CAMPUSES } from '../config/campuses'
 
@@ -82,7 +83,7 @@ export default function Leaderboard() {
           player_id: playerId,
           display_name: currentPlayer.display_name || currentPlayer.name || 'Player',
           campus: currentPlayer.campus || 'Unknown',
-          avatar: currentPlayer.avatar || '🪷',
+          avatar: currentPlayer.avatar || 'shree-ganesha',
           universal_points: effectiveUP,
           global_rank: effectiveRank,
           tier: getRankTier(effectiveUP),
@@ -106,7 +107,7 @@ export default function Leaderboard() {
                 player_id: playerId,
                 display_name: currentPlayer.display_name || currentPlayer.name || 'Player',
                 campus: currentPlayer.campus || 'Unknown',
-                avatar: currentPlayer.avatar || '🪷',
+                avatar: currentPlayer.avatar || 'shree-ganesha',
                 universal_points: currentUP,
                 global_rank: 1,
                 tier: getRankTier(currentUP),
@@ -127,7 +128,7 @@ export default function Leaderboard() {
             player_id: playerId,
             display_name: currentPlayer.display_name || currentPlayer.name || 'Player',
             campus: currentPlayer.campus || 'Unknown',
-            avatar: currentPlayer.avatar || '🪷',
+            avatar: currentPlayer.avatar || 'shree-ganesha',
             universal_points: currentUP,
             tier: getRankTier(currentUP),
             rating: currentPlayer.rating || 1000,
@@ -140,7 +141,7 @@ export default function Leaderboard() {
           player_id: playerId,
           display_name: currentPlayer.display_name || currentPlayer.name || 'Player',
           campus: currentPlayer.campus || 'Unknown',
-          avatar: currentPlayer.avatar || '🪷',
+          avatar: currentPlayer.avatar || 'shree-ganesha',
           universal_points: currentUP,
           global_rank: 1,
           tier: getRankTier(currentUP),
@@ -302,22 +303,13 @@ export default function Leaderboard() {
                   </div>
 
                   {/* Avatar */}
-                  <div
-                    style={{
-                      width: 'clamp(38px, 9vw, 48px)',
-                      height: 'clamp(38px, 9vw, 48px)',
-                      borderRadius: 'var(--radius-full)',
-                      background: 'rgba(148, 163, 184, 0.15)',
-                      border: '2px solid #94A3B8',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 'clamp(1.1rem, 3vw, 1.5rem)',
-                      boxShadow: '0 0 12px rgba(148, 163, 184, 0.3)',
-                      margin: '0.1rem 0',
-                    }}
-                  >
-                    {top2.avatar || '🪷'}
+                  <div style={{ margin: '0.15rem 0' }}>
+                    <PlayerAvatar
+                      avatar={top2.avatar}
+                      size={46}
+                      tierColor="#94A3B8"
+                      showGlow
+                    />
                   </div>
 
                   {/* Player Name */}
@@ -488,22 +480,13 @@ export default function Leaderboard() {
                   </div>
 
                   {/* Avatar with Radiant Gold Halo */}
-                  <div
-                    style={{
-                      width: 'clamp(46px, 11vw, 56px)',
-                      height: 'clamp(46px, 11vw, 56px)',
-                      borderRadius: 'var(--radius-full)',
-                      background: 'linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 107, 53, 0.3))',
-                      border: '2.5px solid #FFD700',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 'clamp(1.3rem, 3.8vw, 1.8rem)',
-                      boxShadow: '0 0 20px rgba(255, 215, 0, 0.5), inset 0 0 10px rgba(255, 215, 0, 0.3)',
-                      margin: '0.15rem 0',
-                    }}
-                  >
-                    {top1.avatar || '🪷'}
+                  <div style={{ margin: '0.2rem 0' }}>
+                    <PlayerAvatar
+                      avatar={top1.avatar}
+                      size={56}
+                      tierColor="#FFD700"
+                      showGlow
+                    />
                   </div>
 
                   {/* Champion Name */}
@@ -655,22 +638,13 @@ export default function Leaderboard() {
                   </div>
 
                   {/* Avatar */}
-                  <div
-                    style={{
-                      width: 'clamp(36px, 8.5vw, 46px)',
-                      height: 'clamp(36px, 8.5vw, 46px)',
-                      borderRadius: 'var(--radius-full)',
-                      background: 'rgba(205, 127, 50, 0.15)',
-                      border: '2px solid #CD7F32',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 'clamp(1.05rem, 2.8vw, 1.4rem)',
-                      boxShadow: '0 0 12px rgba(205, 127, 50, 0.3)',
-                      margin: '0.1rem 0',
-                    }}
-                  >
-                    {top3.avatar || '🪷'}
+                  <div style={{ margin: '0.15rem 0' }}>
+                    <PlayerAvatar
+                      avatar={top3.avatar}
+                      size={44}
+                      tierColor="#CD7F32"
+                      showGlow
+                    />
                   </div>
 
                   {/* Player Name */}
@@ -811,21 +785,13 @@ export default function Leaderboard() {
               >
                 <Sparkles size={12} /> Current #1 Champion
               </div>
-              <div
-                style={{
-                  width: 52,
-                  height: 52,
-                  borderRadius: 'var(--radius-full)',
-                  border: '2px solid #FFD700',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '1.6rem',
-                  boxShadow: '0 0 16px rgba(255,215,0,0.4)',
-                  margin: '0.2rem 0',
-                }}
-              >
-                {entries[0].avatar || '🪷'}
+              <div style={{ margin: '0.2rem 0' }}>
+                <PlayerAvatar
+                  avatar={entries[0].avatar}
+                  size={52}
+                  tierColor="#FFD700"
+                  showGlow
+                />
               </div>
               <div style={{ fontSize: '1.35rem', fontWeight: 900, color: '#FFF' }}>
                 {entries[0].display_name}
@@ -880,23 +846,12 @@ export default function Leaderboard() {
           >
             {/* Left: Player Profile & Tier */}
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', minWidth: '220px', flex: '1 1 auto' }}>
-              <div
-                style={{
-                  width: 44,
-                  height: 44,
-                  borderRadius: 'var(--radius-full)',
-                  background: playerCard.tier?.bg || 'rgba(255,255,255,0.1)',
-                  border: `2px solid ${playerCard.tier?.color || 'var(--primary)'}`,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: '1.4rem',
-                  flexShrink: 0,
-                  boxShadow: `0 0 12px ${playerCard.tier?.border || 'rgba(255,107,53,0.3)'}`,
-                }}
-              >
-                {playerCard.avatar || '🪷'}
-              </div>
+              <PlayerAvatar
+                avatar={playerCard.avatar}
+                size={46}
+                tierColor={playerCard.tier?.color || 'var(--primary)'}
+                showGlow
+              />
               <div style={{ minWidth: 0 }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
                   <span style={{ fontWeight: 800, fontSize: '1.05rem', color: '#FFF' }}>{playerCard.display_name}</span>

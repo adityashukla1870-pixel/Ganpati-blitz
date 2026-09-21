@@ -15,7 +15,13 @@ import pymongo.errors
 from pymongo import MongoClient, DESCENDING, ASCENDING
 from pymongo.errors import ConnectionFailure
 from werkzeug.security import generate_password_hash, check_password_hash
-from services.progression import ACHIEVEMENTS, award_xp, unlock_game_achievements, progression_snapshot
+from services.progression import (
+    ACHIEVEMENTS,
+    award_xp,
+    calculate_game_xp,
+    unlock_game_achievements,
+    progression_snapshot,
+)
 from services.universal_points import (
     award_universal_points,
     award_fixed_universal_points,
@@ -535,16 +541,29 @@ def submit_score(game_id):
     game_score["score_id"] = score_id
     db.game_scores.insert_one(game_score)
 
-    xp_amount = 50 if game_id == "blitz-mix" else 10
-    progression, xp_awarded = award_xp(db, player_id, xp_amount, "game_completion", score_id)
-    unlocked = unlock_game_achievements(db, player_id, game_id, game_score["game_data"])
-
-    # Authoritative Universal Points award
     game_data = data.get("game_data", {})
     difficulty = data.get("difficulty") or game_data.get("difficulty", "normal")
     stats = data.get("stats") or game_data.get("stats") or game_data
     run_id = data.get("run_id") or session_id or score_id
 
+    xp_amount, xp_breakdown = calculate_game_xp(
+        game_id=game_id,
+        score=score,
+        duration=duration,
+        difficulty=difficulty,
+        stats=stats,
+        is_pb=is_pb,
+    )
+    progression, xp_awarded = award_xp(db, player_id, xp_amount, "game_completion", score_id)
+    unlocked, ach_xp = unlock_game_achievements(db, player_id, game_id, game_score["game_data"])
+    if ach_xp > 0:
+        prog_record = db.player_progress.find_one({"player_id": player_id}) or {"total_xp": 0}
+        progression = progression_snapshot(prog_record.get("total_xp", 0))
+        progression["leveled_up"] = (progression["level"] > progression.get("old_level", progression["level"]))
+        xp_breakdown["achievements_xp"] = ach_xp
+        xp_amount += ach_xp
+
+    # Authoritative Universal Points award
     up_result = award_universal_points(
         db=db,
         player_id=player_id,
@@ -564,6 +583,7 @@ def submit_score(game_id):
         "player_id": player_id,
         "game_id": game_id,
         "xp_awarded": xp_amount if xp_awarded else 0,
+        "xp_breakdown": xp_breakdown,
         "progression": progression,
         "achievements_unlocked": unlocked,
         "universal_points_awarded": up_result["universal_points_awarded"],

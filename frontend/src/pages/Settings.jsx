@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowLeft, Settings as SettingsIcon, User } from 'lucide-react';
 import { getPlayer } from '../utils/storage';
+import PlayerAvatar from '../components/PlayerAvatar';
 
 const LS_KEY = 'ganpati_blitz_settings';
 
@@ -155,8 +156,8 @@ const Settings = ({ onLogout }) => {
       <Section title="Account & Data" index={3}>
         {player ? (
           <div style={{ marginBottom: 16 }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 12 }}>
-              <span style={{ fontSize: '1.6rem' }}>{player.avatar || '🪷'}</span>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 12 }}>
+              <PlayerAvatar avatar={player.avatar} size={42} showGlow />
               <div>
                 <div style={{ fontWeight: 800, color: '#FFF', fontSize: '1rem' }}>
                   {player.display_name || player.name}

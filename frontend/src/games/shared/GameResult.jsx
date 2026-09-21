@@ -22,6 +22,8 @@ import { isTierUnlocked } from '../../utils/progression'
 import { getPlayer } from '../../utils/storage'
 import { getNearMissInfo, getNextRivalTarget } from '../../utils/rivalry'
 import { triggerHaptic } from '../../utils/haptics'
+import PlayerAvatar from '../../components/PlayerAvatar'
+import { AVATAR_LIST } from '../../config/avatars'
 
 const GAME_IDS = ['modak-rush', 'diya-dash', 'dhol-battle', 'rangoli-rush', 'mushak-maze', 'ganpati-logic']
 
@@ -55,6 +57,26 @@ export default function GameResult({
   const player = useMemo(() => getPlayer(), [])
   const nearMiss = useMemo(() => getNearMissInfo(score, resolvedBest), [score, resolvedBest])
   const rival = useMemo(() => getNextRivalTarget(player?.player_id || player?.id, computedUP?.totalUP), [player, computedUP])
+
+  const currentProgression = useMemo(() => {
+    const totalXp = Math.max(50, (player?.universal_points || 0) + (xpEarned || 25))
+    const XP_THRESHOLDS = [0, 100, 250, 450, 700, 1000, 1400, 1850, 2350, 3000]
+    let level = 1
+    for (let i = 0; i < XP_THRESHOLDS.length; i++) {
+      if (totalXp >= XP_THRESHOLDS[i]) level = i + 1
+      else break
+    }
+    const currentThreshold = XP_THRESHOLDS[Math.min(level - 1, XP_THRESHOLDS.length - 1)]
+    const nextThreshold = XP_THRESHOLDS[Math.min(level, XP_THRESHOLDS.length - 1)] || currentThreshold + 500
+    const progressXp = Math.max(0, totalXp - currentThreshold)
+    const progressRequired = Math.max(1, nextThreshold - currentThreshold)
+    return {
+      level,
+      total_xp: totalXp,
+      progress_xp: progressXp,
+      progress_required: progressRequired,
+    }
+  }, [player, xpEarned])
 
   const handlePlayAgainClick = useCallback(() => {
     triggerHaptic('light')
@@ -328,9 +350,7 @@ export default function GameResult({
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-              <div style={{ fontSize: '1.25rem', width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,215,0,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                {rival.rivalAvatar}
-              </div>
+              <PlayerAvatar avatar={rival.rivalAvatar} size={34} />
               <div style={{ minWidth: 0, textAlign: 'left' }}>
                 <div style={{ fontSize: '0.65rem', color: '#FBBF24', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em' }}>
                   🎯 Next Rival Target (#{rival.rivalRank})
@@ -485,6 +505,72 @@ export default function GameResult({
             <span style={styles.miniStatLabel}>Tier</span>
             <span style={{ ...styles.miniStatValue, color: tierConfig.color, textTransform: 'uppercase' }}>
               {tierConfig.name}
+            </span>
+          </div>
+        </div>
+
+        {/* Level Progression Progress Bar */}
+        <div
+          style={{
+            background: 'linear-gradient(135deg, rgba(30, 15, 50, 0.7) 0%, rgba(15, 23, 42, 0.85) 100%)',
+            border: '1.5px solid rgba(255, 215, 0, 0.25)',
+            borderRadius: 'var(--radius-md, 10px)',
+            padding: '10px 14px',
+            marginBottom: '1.1rem',
+            textAlign: 'left',
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 6 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.82rem', fontWeight: 800, color: '#FFD700' }}>
+              <Sparkles size={14} /> +{xpEarned || 25} XP GAINED
+            </div>
+            <span
+              style={{
+                fontSize: '0.72rem',
+                fontWeight: 800,
+                color: '#FFF',
+                background: 'rgba(255, 215, 0, 0.15)',
+                border: '1px solid rgba(255, 215, 0, 0.4)',
+                padding: '2px 8px',
+                borderRadius: '9999px',
+              }}
+            >
+              Level {currentProgression.level}
+            </span>
+          </div>
+
+          <div
+            style={{
+              width: '100%',
+              height: 7,
+              borderRadius: 4,
+              background: 'rgba(255,255,255,0.08)',
+              overflow: 'hidden',
+              marginBottom: 6,
+            }}
+          >
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{
+                width: `${Math.min(100, Math.round((currentProgression.progress_xp / currentProgression.progress_required) * 100))}%`,
+              }}
+              transition={{ duration: 1.2, delay: 0.3, ease: 'easeOut' }}
+              style={{
+                height: '100%',
+                borderRadius: 4,
+                background: 'linear-gradient(90deg, #FF6B35 0%, #FFD700 100%)',
+                boxShadow: '0 0 10px rgba(255, 215, 0, 0.5)',
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.7rem' }}>
+            <span style={{ color: 'var(--text-muted)' }}>
+              {currentProgression.progress_xp} / {currentProgression.progress_required} XP
+            </span>
+            <span style={{ color: '#FBBF24', fontWeight: 700 }}>
+              {Math.max(0, currentProgression.progress_required - currentProgression.progress_xp)} XP to Level {currentProgression.level + 1}
             </span>
           </div>
         </div>

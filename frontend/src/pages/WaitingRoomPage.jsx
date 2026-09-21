@@ -3,6 +3,7 @@ import { useNavigate, useLocation, Link } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { ArrowLeft, Copy, Check, Loader2, LogOut } from 'lucide-react'
 import { getSocket, connectSocket } from '../services/socket'
+import PlayerAvatar from '../components/PlayerAvatar'
 
 export default function WaitingRoomPage({ player: playerProp }) {
   const navigate = useNavigate()
@@ -354,20 +355,8 @@ export default function WaitingRoomPage({ player: playerProp }) {
               transition: 'border-color 0.3s',
             }}
           >
-            <div
-              style={{
-                width: 50,
-                height: 50,
-                borderRadius: 'var(--radius-full)',
-                background: myReady ? 'var(--success)' : 'var(--darker)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                margin: '0 auto 0.8rem',
-                fontSize: '1.5rem',
-              }}
-            >
-              {player?.display_name?.[0]?.toUpperCase() || 'Y'}
+            <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.8rem' }}>
+              <PlayerAvatar avatar={player?.avatar} size={52} showGlow={myReady} />
             </div>
             <div style={{ fontWeight: 700, color: 'var(--text)', fontSize: '0.9rem', marginBottom: '0.3rem' }}>
               {player?.display_name || 'You'}
@@ -420,20 +409,8 @@ export default function WaitingRoomPage({ player: playerProp }) {
           >
             {opponent ? (
               <>
-                <div
-                  style={{
-                    width: 50,
-                    height: 50,
-                    borderRadius: 'var(--radius-full)',
-                    background: opponentReady ? 'var(--success)' : 'var(--darker)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    margin: '0 auto 0.8rem',
-                    fontSize: '1.5rem',
-                  }}
-                >
-                  {opponent.display_name?.[0]?.toUpperCase() || '?'}
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '0.8rem' }}>
+                  <PlayerAvatar avatar={opponent?.avatar} size={52} showGlow={opponentReady} />
                 </div>
                 <div style={{ fontWeight: 700, color: 'var(--text)', fontSize: '0.9rem', marginBottom: '0.3rem' }}>
                   {opponent.display_name}

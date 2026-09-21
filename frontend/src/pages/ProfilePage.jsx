@@ -23,6 +23,8 @@ import {
 import { getPlayer, setPlayer as savePlayerToStorage, getUniversalPoints } from '../utils/storage'
 import { getProfile, getPlayerAchievements, getMatchHistory, updatePlayerAvatar } from '../services/api'
 import { getRankTier } from '../config/universalPoints'
+import PlayerAvatar from '../components/PlayerAvatar'
+import { AVATAR_LIST, resolveAvatarId, getAvatarMeta } from '../config/avatars'
 
 const GAME_LIST = [
   { id: 'modak-rush', name: 'Modak Rush', icon: '🥟', route: '/game/modak-rush' },
@@ -31,10 +33,6 @@ const GAME_LIST = [
   { id: 'rangoli-rush', name: 'Rangoli Rush', icon: '🎨', route: '/game/rangoli-rush' },
   { id: 'mushak-maze', name: 'Mushak Maze', icon: '🐭', route: '/game/mushak-maze' },
   { id: 'ganpati-logic', name: 'Ganpati Logic', icon: '🧩', route: '/game/ganpati-logic' },
-]
-
-const AVATAR_OPTIONS = [
-  '🪷', '🥟', '🪔', '🥁', '🐭', '🎨', '⚡', '🧠', '👑', '🏆', '🐘', '🔥'
 ]
 
 const AVATAR_COLORS = [
@@ -282,7 +280,7 @@ export default function ProfilePage({ player: playerProp, onPlayerSetup }) {
   }, [progression])
 
   const displayName = player?.display_name || player?.name || 'Player'
-  const avatarEmoji = player?.avatar || '🪷'
+  const avatarEmoji = player?.avatar || 'shree-ganesha'
   const campus = player?.campus || 'Online Arena'
   const rating = profile?.player?.rating ?? player?.rating ?? 1000
   const colorIndex = (displayName.charCodeAt(0) || 0) % AVATAR_COLORS.length
@@ -294,11 +292,12 @@ export default function ProfilePage({ player: playerProp, onPlayerSetup }) {
 
   const handleSelectAvatar = async (chosenAvatar) => {
     setShowAvatarPicker(false)
+    const meta = getAvatarMeta(chosenAvatar)
     const updated = { ...player, avatar: chosenAvatar }
     setPlayerState(updated)
     savePlayerToStorage(updated)
     onPlayerSetup?.(updated)
-    showToast(`Avatar updated to ${chosenAvatar}!`)
+    showToast(`Sacred Insignia updated to ${meta.name}!`)
 
     if (playerId) {
       try {
@@ -503,26 +502,25 @@ export default function ProfilePage({ player: playerProp, onPlayerSetup }) {
           }}
         >
           {/* Avatar with Click-to-Edit */}
-          <div style={{ position: 'relative', marginBottom: 12 }}>
+          <div style={{ position: 'relative', marginBottom: 14 }}>
             <motion.div
               whileHover={{ scale: 1.08 }}
               whileTap={{ scale: 0.96 }}
               onClick={() => setShowAvatarPicker((prev) => !prev)}
               style={{
-                width: 88,
-                height: 88,
-                borderRadius: 'var(--radius-full)',
-                background: `linear-gradient(135deg, ${AVATAR_COLORS[colorIndex]}, #FF9933)`,
-                display: 'flex',
+                cursor: 'pointer',
+                display: 'inline-flex',
                 alignItems: 'center',
                 justifyContent: 'center',
-                boxShadow: `0 0 25px ${AVATAR_COLORS[colorIndex]}55, inset 0 0 10px rgba(255,255,255,0.4)`,
-                fontSize: '2.6rem',
-                cursor: 'pointer',
-                border: '3px solid rgba(255, 255, 255, 0.25)',
               }}
+              title="Click to change insignia"
             >
-              {avatarEmoji}
+              <PlayerAvatar
+                avatar={avatarEmoji}
+                size={92}
+                showGlow
+                tierColor={rankTier.color}
+              />
             </motion.div>
 
             {/* Edit Avatar Pencil Badge */}
@@ -532,8 +530,8 @@ export default function ProfilePage({ player: playerProp, onPlayerSetup }) {
               onClick={() => setShowAvatarPicker((prev) => !prev)}
               style={{
                 position: 'absolute',
-                bottom: 0,
-                right: -2,
+                bottom: 2,
+                right: 2,
                 width: 28,
                 height: 28,
                 borderRadius: '50%',
@@ -546,7 +544,7 @@ export default function ProfilePage({ player: playerProp, onPlayerSetup }) {
                 cursor: 'pointer',
                 boxShadow: '0 2px 8px rgba(0,0,0,0.5)',
               }}
-              title="Change Avatar"
+              title="Change Sacred Insignia"
             >
               <Edit3 size={13} strokeWidth={2.5} />
             </motion.button>
@@ -570,9 +568,14 @@ export default function ProfilePage({ player: playerProp, onPlayerSetup }) {
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
-                  <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--festival-gold)' }}>
-                    CHOOSE YOUR FESTIVE AVATAR
-                  </span>
+                  <div style={{ textAlign: 'left' }}>
+                    <span style={{ fontSize: '0.85rem', fontWeight: 800, color: 'var(--festival-gold)', display: 'block' }}>
+                      SACRED INSIGNIA GALLERY
+                    </span>
+                    <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                      Level up to unlock divine festive emblems
+                    </span>
+                  </div>
                   <button
                     onClick={() => setShowAvatarPicker(false)}
                     style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
@@ -584,28 +587,90 @@ export default function ProfilePage({ player: playerProp, onPlayerSetup }) {
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(6, 1fr)',
+                    gridTemplateColumns: 'repeat(4, 1fr)',
                     gap: 10,
                   }}
                 >
-                  {AVATAR_OPTIONS.map((emoji) => (
-                    <motion.button
-                      key={emoji}
-                      whileHover={{ scale: 1.2 }}
-                      whileTap={{ scale: 0.9 }}
-                      onClick={() => handleSelectAvatar(emoji)}
-                      style={{
-                        fontSize: '1.6rem',
-                        background: avatarEmoji === emoji ? 'rgba(255, 215, 0, 0.25)' : 'rgba(255, 255, 255, 0.05)',
-                        border: avatarEmoji === emoji ? '2px solid var(--festival-gold)' : '1px solid rgba(255,255,255,0.1)',
-                        borderRadius: 'var(--radius-md, 10px)',
-                        padding: '8px 4px',
-                        cursor: 'pointer',
-                      }}
-                    >
-                      {emoji}
-                    </motion.button>
-                  ))}
+                  {AVATAR_LIST.map((item) => {
+                    const resolvedCurrent = resolveAvatarId(avatarEmoji)
+                    const isSelected = resolvedCurrent === item.id
+                    const isLocked = (progression.level || 1) < (item.unlockLevel || 1)
+
+                    return (
+                      <motion.button
+                        key={item.id}
+                        whileHover={!isLocked ? { scale: 1.08 } : {}}
+                        whileTap={!isLocked ? { scale: 0.94 } : {}}
+                        onClick={() => {
+                          if (isLocked) {
+                            showToast(`Unlocks at Level ${item.unlockLevel}! Earn XP to level up.`)
+                          } else {
+                            handleSelectAvatar(item.id)
+                          }
+                        }}
+                        style={{
+                          background: isSelected
+                            ? 'rgba(255, 215, 0, 0.22)'
+                            : isLocked
+                              ? 'rgba(255, 255, 255, 0.02)'
+                              : 'rgba(255, 255, 255, 0.05)',
+                          border: isSelected
+                            ? '2px solid var(--festival-gold)'
+                            : isLocked
+                              ? '1px solid rgba(255, 255, 255, 0.06)'
+                              : '1px solid rgba(255, 255, 255, 0.12)',
+                          borderRadius: 'var(--radius-md, 12px)',
+                          padding: '8px 4px 6px',
+                          cursor: isLocked ? 'not-allowed' : 'pointer',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          alignItems: 'center',
+                          gap: 4,
+                          position: 'relative',
+                          opacity: isLocked ? 0.5 : 1,
+                        }}
+                        title={isLocked ? `Unlocks at Level ${item.unlockLevel}` : `${item.name} (${item.title})`}
+                      >
+                        <PlayerAvatar avatar={item.id} size={42} showGlow={isSelected} />
+                        <span
+                          style={{
+                            fontSize: '0.68rem',
+                            fontWeight: 700,
+                            color: isSelected ? '#FFD700' : isLocked ? 'var(--text-muted)' : '#FFF',
+                            whiteSpace: 'nowrap',
+                            overflow: 'hidden',
+                            textOverflow: 'ellipsis',
+                            maxWidth: '100%',
+                            display: 'block',
+                          }}
+                        >
+                          {item.name}
+                        </span>
+
+                        {isLocked && (
+                          <div
+                            style={{
+                              position: 'absolute',
+                              top: 4,
+                              right: 4,
+                              background: 'rgba(0,0,0,0.75)',
+                              border: '1px solid rgba(255,255,255,0.2)',
+                              borderRadius: '9999px',
+                              padding: '1px 5px',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: 2,
+                              fontSize: '0.58rem',
+                              color: '#FBBF24',
+                              fontWeight: 800,
+                            }}
+                          >
+                            <Lock size={9} /> Lv.{item.unlockLevel}
+                          </div>
+                        )}
+                      </motion.button>
+                    )
+                  })}
                 </div>
               </motion.div>
             )}

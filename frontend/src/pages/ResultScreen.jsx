@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useMemo, useRef, useCallback } from 'react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useLocation, useNavigate, Link } from 'react-router-dom'
 import { Trophy, RotateCcw, Home, Star, TrendingUp, TrendingDown, Gamepad2, Flag, Award, Sparkles, ArrowRight, Crown, Zap, Flame, Target } from 'lucide-react'
 import { DIFFICULTY_TIERS } from '../config/difficulties'
@@ -8,6 +8,8 @@ import { submitScore } from '../services/api'
 import { getPlayer } from '../utils/storage'
 import { getNearMissInfo, getNextRivalTarget } from '../utils/rivalry'
 import { triggerHaptic } from '../utils/haptics'
+import PlayerAvatar from '../components/PlayerAvatar'
+import { AVATAR_LIST, getAvatarMeta } from '../config/avatars'
 
 const container = {
   hidden: { opacity: 0 },
@@ -147,6 +149,11 @@ export default function ResultScreen(props) {
   const nearMiss = useMemo(() => getNearMissInfo(score, previousBest), [score, previousBest])
   const rival = useMemo(() => getNextRivalTarget(player?.player_id || player?.id, computedUP?.totalUP), [player, computedUP])
 
+  const [serverProgression, setServerProgression] = useState(null)
+  const [serverXpEarned, setServerXpEarned] = useState(xpEarned || 25)
+  const [serverXpBreakdown, setServerXpBreakdown] = useState(null)
+  const [showLevelUpCelebration, setShowLevelUpCelebration] = useState(false)
+
   const submittedRef = useRef(false)
   useEffect(() => {
     if (submittedRef.current) return
@@ -162,10 +169,48 @@ export default function ResultScreen(props) {
           if (res?.new_universal_points !== undefined) {
             localStorage.setItem('ganpati_universal_points', String(res.new_universal_points))
           }
+          if (res?.xp_awarded) {
+            setServerXpEarned(res.xp_awarded)
+          }
+          if (res?.xp_breakdown) {
+            setServerXpBreakdown(res.xp_breakdown)
+          }
+          if (res?.progression) {
+            setServerProgression(res.progression)
+            if (res.progression.leveled_up) {
+              setShowLevelUpCelebration(true)
+              triggerHaptic('heavy')
+            }
+          }
         })
         .catch(() => {})
     }
   }, [player, gameId, score, difficulty, stats, result])
+
+  const currentProgression = useMemo(() => {
+    if (serverProgression) return serverProgression
+    const totalXp = Math.max(50, (player?.universal_points || 0) + (serverXpEarned || 25))
+    const XP_THRESHOLDS = [0, 100, 250, 450, 700, 1000, 1400, 1850, 2350, 3000]
+    let level = 1
+    for (let i = 0; i < XP_THRESHOLDS.length; i++) {
+      if (totalXp >= XP_THRESHOLDS[i]) level = i + 1
+      else break
+    }
+    const currentThreshold = XP_THRESHOLDS[Math.min(level - 1, XP_THRESHOLDS.length - 1)]
+    const nextThreshold = XP_THRESHOLDS[Math.min(level, XP_THRESHOLDS.length - 1)] || currentThreshold + 500
+    const progressXp = Math.max(0, totalXp - currentThreshold)
+    const progressRequired = Math.max(1, nextThreshold - currentThreshold)
+    return {
+      level,
+      total_xp: totalXp,
+      progress_xp: progressXp,
+      progress_required: progressRequired,
+    }
+  }, [serverProgression, player, serverXpEarned])
+
+  const unlockedAvatar = useMemo(() => {
+    return AVATAR_LIST.find((a) => a.unlockLevel === currentProgression.level) || null
+  }, [currentProgression.level])
 
   const handlePlayAgain = useCallback(() => {
     triggerHaptic('light')
@@ -421,9 +466,7 @@ export default function ResultScreen(props) {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8, minWidth: 0 }}>
-              <div style={{ fontSize: '1.25rem', width: 32, height: 32, borderRadius: '50%', background: 'rgba(255,215,0,0.15)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
-                {rival.rivalAvatar}
-              </div>
+              <PlayerAvatar avatar={rival.rivalAvatar} size={34} />
               <div style={{ minWidth: 0, textAlign: 'left' }}>
                 <div style={{ fontSize: '0.65rem', color: '#FBBF24', textTransform: 'uppercase', fontWeight: 800, letterSpacing: '0.04em' }}>
                   🎯 Next Rival Target (#{rival.rivalRank})
@@ -587,41 +630,116 @@ export default function ResultScreen(props) {
           </motion.div>
         )}
 
-        {xpEarned != null && xpEarned > 0 && (
-          <motion.div variants={item} style={{ width: '100%' }}>
-            <div
+        {/* Dynamic XP & Level Progress Card */}
+        <motion.div
+          variants={item}
+          style={{
+            background: 'linear-gradient(135deg, rgba(30, 15, 50, 0.7) 0%, rgba(15, 23, 42, 0.85) 100%)',
+            border: '1.5px solid rgba(255, 215, 0, 0.28)',
+            borderRadius: 'var(--radius-md)',
+            padding: '12px 14px',
+            width: '100%',
+            boxSizing: 'border-box',
+            display: 'flex',
+            flexDirection: 'column',
+            gap: 8,
+            boxShadow: '0 4px 16px rgba(0, 0, 0, 0.3)',
+          }}
+        >
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <Sparkles size={16} color="#FFD700" />
+              <span style={{ fontSize: '0.88rem', fontWeight: 800, color: '#FFD700' }}>
+                +{serverXpEarned || 25} XP GAINED
+              </span>
+            </div>
+            <span
               style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                fontFamily: 'var(--font-display)',
-                fontSize: '0.85rem',
-                color: 'var(--text)',
-                marginBottom: 6,
+                fontSize: '0.72rem',
+                fontWeight: 800,
+                color: '#FFF',
+                background: 'rgba(255, 215, 0, 0.15)',
+                border: '1px solid rgba(255, 215, 0, 0.4)',
+                padding: '2px 8px',
+                borderRadius: '9999px',
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: 4,
               }}
             >
-              <span>+{xpEarned} XP</span>
-            </div>
-            <div
-              style={{
-                height: 6,
-                borderRadius: 'var(--radius-full)',
-                background: 'rgba(255,255,255,0.1)',
-                overflow: 'hidden',
+              <span>Level {currentProgression.level}</span>
+            </span>
+          </div>
+
+          {/* Real Animated XP Progress Track */}
+          <div
+            style={{
+              width: '100%',
+              height: 8,
+              borderRadius: 4,
+              background: 'rgba(255,255,255,0.08)',
+              overflow: 'hidden',
+              position: 'relative',
+            }}
+          >
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{
+                width: `${Math.min(100, Math.round((currentProgression.progress_xp / currentProgression.progress_required) * 100))}%`,
               }}
-            >
-              <motion.div
-                initial={{ width: 0 }}
-                animate={{ width: '70%' }}
-                transition={{ duration: 1, delay: 0.5 }}
-                style={{
-                  height: '100%',
-                  borderRadius: 'var(--radius-full)',
-                  background: 'linear-gradient(90deg, var(--festival-saffron), var(--festival-gold))',
-                }}
-              />
+              transition={{ duration: 1.2, delay: 0.3, ease: 'easeOut' }}
+              style={{
+                height: '100%',
+                borderRadius: 4,
+                background: 'linear-gradient(90deg, #FF6B35 0%, #FFD700 100%)',
+                boxShadow: '0 0 10px rgba(255, 215, 0, 0.5)',
+              }}
+            />
+          </div>
+
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.72rem' }}>
+            <span style={{ color: 'var(--text-muted)' }}>
+              {currentProgression.progress_xp} / {currentProgression.progress_required} XP ({Math.min(100, Math.round((currentProgression.progress_xp / currentProgression.progress_required) * 100))}%)
+            </span>
+            <span style={{ color: '#FBBF24', fontWeight: 700 }}>
+              {Math.max(0, currentProgression.progress_required - currentProgression.progress_xp)} XP to Level {currentProgression.level + 1}
+            </span>
+          </div>
+
+          {/* XP Breakdown Chips */}
+          {serverXpBreakdown && (
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: 5, marginTop: 2, paddingTop: 6, borderTop: '1px solid rgba(255,255,255,0.06)' }}>
+              <span style={{ fontSize: '0.65rem', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: 4, color: 'var(--text-muted)' }}>
+                Base: <strong style={{ color: '#FFF' }}>+{serverXpBreakdown.base_xp}</strong>
+              </span>
+              {serverXpBreakdown.skill_xp > 0 && (
+                <span style={{ fontSize: '0.65rem', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: 4, color: 'var(--text-muted)' }}>
+                  Skill: <strong style={{ color: '#4ADE80' }}>+{serverXpBreakdown.skill_xp}</strong>
+                </span>
+              )}
+              {serverXpBreakdown.difficulty_multiplier > 1 && (
+                <span style={{ fontSize: '0.65rem', background: 'rgba(255,255,255,0.05)', padding: '2px 6px', borderRadius: 4, color: 'var(--text-muted)' }}>
+                  Tier: <strong style={{ color: tierConfig.color }}>x{serverXpBreakdown.difficulty_multiplier}</strong>
+                </span>
+              )}
+              {serverXpBreakdown.pb_bonus > 0 && (
+                <span style={{ fontSize: '0.65rem', background: 'rgba(255,215,0,0.12)', padding: '2px 6px', borderRadius: 4, color: '#FFD700', fontWeight: 700 }}>
+                  PB: +{serverXpBreakdown.pb_bonus}
+                </span>
+              )}
+              {serverXpBreakdown.combo_bonus > 0 && (
+                <span style={{ fontSize: '0.65rem', background: 'rgba(255,107,53,0.15)', padding: '2px 6px', borderRadius: 4, color: '#FF8C42', fontWeight: 700 }}>
+                  Combo: +{serverXpBreakdown.combo_bonus}
+                </span>
+              )}
+              {serverXpBreakdown.achievements_xp > 0 && (
+                <span style={{ fontSize: '0.65rem', background: 'rgba(192,132,252,0.15)', padding: '2px 6px', borderRadius: 4, color: '#C084FC', fontWeight: 700 }}>
+                  Achievement: +{serverXpBreakdown.achievements_xp}
+                </span>
+              )}
             </div>
-          </motion.div>
-        )}
+          )}
+        </motion.div>
 
         <motion.div
           variants={item}
@@ -774,6 +892,113 @@ export default function ResultScreen(props) {
           </div>
         </motion.div>
       </motion.div>
+
+      {/* Level-Up Celebration Modal */}
+      <AnimatePresence>
+        {showLevelUpCelebration && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            style={{
+              position: 'fixed',
+              inset: 0,
+              background: 'rgba(10, 5, 25, 0.92)',
+              backdropFilter: 'blur(10px)',
+              zIndex: 10000,
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              padding: '1.5rem',
+            }}
+          >
+            <motion.div
+              initial={{ scale: 0.8, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.8, y: 20 }}
+              transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+              style={{
+                maxWidth: 380,
+                width: '100%',
+                background: 'linear-gradient(180deg, rgba(35, 20, 60, 0.98) 0%, rgba(15, 8, 30, 0.98) 100%)',
+                border: '2px solid #FFD700',
+                borderRadius: 'var(--radius-xl, 20px)',
+                padding: '2rem 1.5rem',
+                textAlign: 'center',
+                boxShadow: '0 0 50px rgba(255, 215, 0, 0.4), inset 0 0 20px rgba(255, 215, 0, 0.2)',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: 12,
+              }}
+            >
+              <motion.div
+                animate={{ rotate: [0, 10, -10, 0], scale: [1, 1.15, 1] }}
+                transition={{ repeat: Infinity, duration: 2 }}
+                style={{ fontSize: '2.5rem' }}
+              >
+                🎉
+              </motion.div>
+              <div style={{ fontSize: '1.4rem', fontWeight: 900, color: '#FFD700', letterSpacing: '0.04em' }}>
+                LEVEL UP!
+              </div>
+              <div style={{ fontSize: '1.05rem', fontWeight: 700, color: '#FFF' }}>
+                You reached Level {currentProgression.level}!
+              </div>
+
+              {unlockedAvatar && (
+                <div
+                  style={{
+                    marginTop: 8,
+                    padding: '14px 16px',
+                    background: 'rgba(255, 215, 0, 0.1)',
+                    border: '1.5px dashed rgba(255, 215, 0, 0.6)',
+                    borderRadius: 'var(--radius-lg, 14px)',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    alignItems: 'center',
+                    gap: 8,
+                    width: '100%',
+                    boxSizing: 'border-box',
+                  }}
+                >
+                  <span style={{ fontSize: '0.72rem', fontWeight: 800, color: '#FBBF24', textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+                    ✨ Sacred Insignia Unlocked!
+                  </span>
+                  <PlayerAvatar avatar={unlockedAvatar.id} size={64} showGlow />
+                  <div style={{ fontWeight: 800, color: '#FFF', fontSize: '0.95rem' }}>
+                    {unlockedAvatar.name}
+                  </div>
+                  <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', lineHeight: 1.3 }}>
+                    {unlockedAvatar.description}
+                  </div>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setShowLevelUpCelebration(false)}
+                style={{
+                  marginTop: 12,
+                  width: '100%',
+                  padding: '0.85rem 1.5rem',
+                  borderRadius: 'var(--radius-full, 9999px)',
+                  background: 'linear-gradient(135deg, #FF6B35 0%, #FFD700 100%)',
+                  border: 'none',
+                  color: '#1a0800',
+                  fontWeight: 900,
+                  fontSize: '0.95rem',
+                  cursor: 'pointer',
+                  letterSpacing: '0.04em',
+                  boxShadow: '0 4px 16px rgba(255, 107, 53, 0.4)',
+                }}
+              >
+                CONTINUE BLITZ
+              </button>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

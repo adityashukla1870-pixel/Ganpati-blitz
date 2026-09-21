@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Menu, X, Trophy, User, LogOut, Home, Gamepad2, Info, Swords, Flame } from 'lucide-react'
 import { getProgression } from '../services/api'
+import PlayerAvatar from './PlayerAvatar'
 
 export default function Navbar({ player, onLogout }) {
   const [mobileOpen, setMobileOpen] = useState(false)
@@ -81,20 +82,7 @@ export default function Navbar({ player, onLogout }) {
           {player ? (
             <div className="navbar-user" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginLeft: '0.5rem' }}>
               <Link to="/profile" style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', textDecoration: 'none' }}>
-                <div
-                  aria-hidden="true"
-                  style={{
-                    width: 34, height: 34, borderRadius: '50%',
-                    background: 'linear-gradient(135deg, var(--festival-saffron), var(--festival-gold))',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    fontWeight: 900, color: '#2a1500', fontSize: '0.85rem',
-                    border: '2px solid rgba(255,255,255,0.25)',
-                    boxShadow: '0 0 12px rgba(255,153,51,0.4)',
-                    flexShrink: 0,
-                  }}
-                >
-                  {player.display_name?.[0]?.toUpperCase() || '?'}
-                </div>
+                <PlayerAvatar avatar={player.avatar} size={34} />
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
                   <span className="navbar-username" style={{ lineHeight: 1 }}>
                     {player.display_name}
@@ -211,7 +199,7 @@ export default function Navbar({ player, onLogout }) {
               {player ? (
                 <>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.75rem 1rem' }}>
-                    <User size={18} style={{ color: 'var(--secondary)' }} />
+                    <PlayerAvatar avatar={player.avatar} size={26} />
                     <Link to="/profile" onClick={() => setMobileOpen(false)} style={{ color: 'var(--secondary)', fontWeight: 600, textDecoration: 'none' }}>{player.display_name}</Link>
                     <span className="badge badge-gold" style={{ fontSize: '0.6rem' }}>{player.campus}</span>
                   </div>

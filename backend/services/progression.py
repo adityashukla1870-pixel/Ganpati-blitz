@@ -35,13 +35,84 @@ def progression_snapshot(total_xp):
     }
 
 
+def calculate_game_xp(game_id, score, duration, difficulty="normal", stats=None, is_pb=False):
+    """
+    Calculate dynamic performance-scaled XP for a game run.
+    Awards base participation XP, skill-based score scaling, difficulty multiplier,
+    personal best bonus, and combo/accuracy bonuses.
+    """
+    stats = stats or {}
+    base_xp = 20
+
+    # Game-specific normalized skill scoring (up to 50 XP)
+    if game_id == "modak-rush":
+        skill_xp = min(50, int((score / 1200.0) * 40))
+    elif game_id == "diya-dash":
+        skill_xp = min(50, int((score / 1500.0) * 40))
+    elif game_id == "dhol-battle":
+        skill_xp = min(50, int((score / 1200.0) * 40))
+    elif game_id == "rangoli-rush":
+        skill_xp = min(50, int((score / 1000.0) * 40))
+    elif game_id == "mushak-maze":
+        skill_xp = min(50, int((score / 1000.0) * 40))
+    elif game_id == "ganpati-logic":
+        skill_xp = min(50, int((score / 800.0) * 40))
+    elif game_id == "blitz-mix":
+        base_xp = 40
+        skill_xp = min(50, int((score / 1500.0) * 40))
+    else:
+        skill_xp = min(40, int(score / 30.0))
+
+    # Difficulty multiplier
+    diff_multipliers = {
+        "easy": 1.0,
+        "normal": 1.25,
+        "hard": 1.5,
+        "expert": 1.85,
+        "legend": 2.25,
+    }
+    diff_mult = diff_multipliers.get(str(difficulty).lower(), 1.25)
+    scaled_subtotal = int((base_xp + skill_xp) * diff_mult)
+
+    # Personal Best bonus
+    pb_bonus = 25 if is_pb else 0
+
+    # Combo / Accuracy bonus
+    combo_bonus = 0
+    accuracy = stats.get("accuracy")
+    max_combo = stats.get("maxCombo") or stats.get("streak") or 0
+    if accuracy is not None and accuracy >= 90:
+        combo_bonus += 15
+    if max_combo >= 10:
+        combo_bonus += 15
+
+    total_xp = max(20, scaled_subtotal + pb_bonus + combo_bonus)
+
+    breakdown = {
+        "base_xp": base_xp,
+        "skill_xp": skill_xp,
+        "difficulty": difficulty,
+        "difficulty_multiplier": diff_mult,
+        "pb_bonus": pb_bonus,
+        "combo_bonus": combo_bonus,
+        "total_xp": total_xp,
+    }
+    return total_xp, breakdown
+
+
 def award_xp(db, player_id, amount, source, source_id):
     """Award XP idempotently for a validated server-side event."""
     reward_key = f"{source}:{source_id}"
     existing = db.xp_events.find_one({"player_id": player_id, "reward_key": reward_key})
     if existing:
         progress = db.player_progress.find_one({"player_id": player_id}) or {"total_xp": 0}
-        return progression_snapshot(progress.get("total_xp", 0)), False
+        snapshot = progression_snapshot(progress.get("total_xp", 0))
+        snapshot["leveled_up"] = False
+        return snapshot, False
+
+    prev_record = db.player_progress.find_one({"player_id": player_id}) or {"total_xp": 0}
+    old_total = prev_record.get("total_xp", 0)
+    old_level = level_for_xp(old_total)
 
     progress = db.player_progress.find_one_and_update(
         {"player_id": player_id},
@@ -53,6 +124,10 @@ def award_xp(db, player_id, amount, source, source_id):
         upsert=True,
         return_document=ReturnDocument.AFTER,
     )
+    new_total = progress.get("total_xp", amount)
+    new_level = level_for_xp(new_total)
+    leveled_up = new_level > old_level
+
     db.xp_events.insert_one({
         "player_id": player_id,
         "reward_key": reward_key,
@@ -60,7 +135,11 @@ def award_xp(db, player_id, amount, source, source_id):
         "source": source,
         "created_at": datetime.utcnow(),
     })
-    return progression_snapshot(progress.get("total_xp", amount)), True
+    snapshot = progression_snapshot(new_total)
+    snapshot["leveled_up"] = leveled_up
+    snapshot["old_level"] = old_level
+    snapshot["new_level"] = new_level
+    return snapshot, True
 
 
 ACHIEVEMENTS = [
@@ -103,6 +182,7 @@ def unlock_game_achievements(db, player_id, game_id, game_data):
     if game_id == "blitz-mix":
         candidates.append("blitz-completed")
 
+    achievement_xp_awarded = 0
     for achievement_id in candidates:
         result = db.player_achievements.update_one(
             {"player_id": player_id, "achievement_id": achievement_id},
@@ -111,4 +191,8 @@ def unlock_game_achievements(db, player_id, game_id, game_data):
         )
         if result.upserted_id:
             unlocked.append(achievement_id)
-    return unlocked
+            # Award +75 bonus XP per unlocked achievement
+            award_xp(db, player_id, 75, "achievement", achievement_id)
+            achievement_xp_awarded += 75
+
+    return unlocked, achievement_xp_awarded

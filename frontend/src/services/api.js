@@ -24,7 +24,7 @@ api.interceptors.response.use(
   }
 )
 
-export const createPlayer = async (displayName, campus, avatar = '🪷', pin = '') => {
+export const createPlayer = async (displayName, campus, avatar = 'shree-ganesha', pin = '') => {
   const res = await api.post('/api/player', { display_name: displayName, campus, avatar, pin })
   return res.data
 }

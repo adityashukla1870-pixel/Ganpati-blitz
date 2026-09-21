@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { LogoIcon } from './Logo'
 import { getRankTier } from '../config/universalPoints'
+import PlayerAvatar from './PlayerAvatar'
 
 export default function TopNav({ player, soundEnabled, onSoundToggle }) {
   const location = useLocation()
@@ -193,15 +194,20 @@ export default function TopNav({ player, soundEnabled, onSoundToggle }) {
           {/* Profile */}
           <Link
             to="/profile"
-            title="Player Profile"
+            title={player ? `${player.display_name || 'Player'} Profile` : 'Player Profile'}
             style={{
               ...styles.iconBtn,
+              padding: player ? 2 : undefined,
               color: pathname === '/profile' ? '#FFD166' : 'var(--text)',
               borderColor: pathname === '/profile' ? 'rgba(255,209,102,0.4)' : 'rgba(255,255,255,0.1)',
             }}
             aria-label="Profile"
           >
-            <User size={16} />
+            {player ? (
+              <PlayerAvatar avatar={player.avatar} size={28} showGlow={pathname === '/profile'} />
+            ) : (
+              <User size={16} />
+            )}
           </Link>
 
           {/* Settings */}
@@ -265,7 +271,7 @@ export default function TopNav({ player, soundEnabled, onSoundToggle }) {
             {player ? (
               <div style={styles.mobilePlayerCard}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem' }}>
-                  <span style={{ fontSize: '1.4rem' }}>{player.avatar || '🪷'}</span>
+                  <PlayerAvatar avatar={player.avatar} size={32} />
                   <div>
                     <div style={{ fontWeight: 800, fontSize: '0.92rem', color: '#FFF' }}>
                       {player.display_name || player.name || 'Player'}

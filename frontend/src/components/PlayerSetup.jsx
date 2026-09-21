@@ -4,15 +4,15 @@ import { User, School, ArrowRight, LogIn, UserPlus, Sparkles, CheckCircle2, Lock
 import Button from './Button'
 import { createPlayer, loginPlayer } from '../services/api'
 import { CAMPUSES, DEFAULT_CAMPUS } from '../config/campuses'
-
-const AVATARS = ['🪷', '🥟', '🪔', '🥁', '🐭', '🎨', '⚡', '🧠']
+import PlayerAvatar from './PlayerAvatar'
+import { AVATAR_LIST, resolveAvatarId } from '../config/avatars'
 
 export default function PlayerSetup({ onSubmit, defaultMode = 'create' }) {
   const [mode, setMode] = useState(defaultMode) // 'create' | 'login'
   const [name, setName] = useState('')
   const [campus, setCampus] = useState(DEFAULT_CAMPUS)
   const [pin, setPin] = useState('')
-  const [avatar, setAvatar] = useState('🪷')
+  const [avatar, setAvatar] = useState('shree-ganesha')
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
   const [successMsg, setSuccessMsg] = useState('')
@@ -189,30 +189,41 @@ export default function PlayerSetup({ onSubmit, defaultMode = 'create' }) {
         {/* Avatar picker (only in Create mode) */}
         {mode === 'create' && (
           <div className="form-group" style={{ marginBottom: 0 }}>
-            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.4rem', display: 'block' }}>
-              Choose Your Sacred Avatar
+            <label className="form-label" style={{ fontSize: '0.82rem', fontWeight: 700, marginBottom: '0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+              <span>Choose Your Sacred Avatar Insignia</span>
+              <span style={{ fontSize: '0.72rem', color: '#FFD700', fontWeight: 600 }}>
+                {AVATAR_LIST.find((a) => a.id === resolveAvatarId(avatar))?.name || 'Insignia'}
+              </span>
             </label>
-            <div style={{ display: 'flex', gap: '0.45rem', flexWrap: 'wrap', justifyContent: 'center' }}>
-              {AVATARS.map((emoji) => (
-                <button
-                  key={emoji}
-                  type="button"
-                  onClick={() => setAvatar(emoji)}
-                  style={{
-                    width: 42,
-                    height: 42,
-                    borderRadius: 'var(--radius-md, 8px)',
-                    border: avatar === emoji ? '2px solid #FFD700' : '1px solid rgba(255,255,255,0.12)',
-                    background: avatar === emoji ? 'rgba(255,215,0,0.2)' : 'rgba(255,255,255,0.05)',
-                    fontSize: '1.35rem',
-                    cursor: 'pointer',
-                    transform: avatar === emoji ? 'scale(1.1)' : 'scale(1)',
-                    transition: 'all 0.15s ease',
-                  }}
-                >
-                  {emoji}
-                </button>
-              ))}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(6, 1fr)', gap: '0.45rem', justifyItems: 'center' }}>
+              {AVATAR_LIST.map((item) => {
+                const isSelected = resolveAvatarId(avatar) === item.id
+                return (
+                  <button
+                    key={item.id}
+                    type="button"
+                    onClick={() => setAvatar(item.id)}
+                    title={`${item.name} • ${item.title}`}
+                    style={{
+                      width: 44,
+                      height: 44,
+                      padding: 0,
+                      borderRadius: '50%',
+                      border: isSelected ? '2px solid #FFD700' : '2px solid transparent',
+                      background: isSelected ? 'rgba(255, 215, 0, 0.2)' : 'transparent',
+                      boxShadow: isSelected ? '0 0 14px rgba(255, 215, 0, 0.5)' : 'none',
+                      cursor: 'pointer',
+                      transform: isSelected ? 'scale(1.12)' : 'scale(1)',
+                      transition: 'all 0.16s ease',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
+                    <PlayerAvatar avatar={item.id} size={38} showGlow={isSelected} />
+                  </button>
+                )
+              })}
             </div>
           </div>
         )}

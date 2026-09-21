@@ -82,7 +82,7 @@ export function getNextRivalTarget(currentPlayerId, playerUP = 0) {
 
       return {
         rivalName: rival.display_name || rival.name || 'Contender',
-        rivalAvatar: rival.avatar || '🪷',
+        rivalAvatar: rival.avatar || 'shree-ganesha',
         rivalRank: rival.rank || myIndex,
         rivalUP,
         upGap,
@@ -101,7 +101,7 @@ export function getNextRivalTarget(currentPlayerId, playerUP = 0) {
       const upGap = Math.max(1, rivalUP - playerUP)
       return {
         rivalName: rival.display_name || rival.name || 'Contender',
-        rivalAvatar: rival.avatar || '🪷',
+        rivalAvatar: rival.avatar || 'shree-ganesha',
         rivalRank: rival.rank || 'Board',
         rivalUP,
         upGap,

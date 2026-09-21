@@ -2,6 +2,7 @@ import { useState, useEffect, useMemo } from 'react'
 import { motion } from 'framer-motion'
 import { Trophy, Medal, Award, Sparkles, ChevronDown, ChevronUp, ChevronsDown, Users, Target } from 'lucide-react'
 import { getRankTier } from '../config/universalPoints'
+import PlayerAvatar from './PlayerAvatar'
 
 const rankMedals = {
   1: <Trophy size={20} style={{ color: '#FFD700', filter: 'drop-shadow(0 0 6px rgba(255,215,0,0.6))' }} />,
@@ -124,22 +125,11 @@ export default function LeaderboardTable({ entries = [], currentPlayerId }) {
                 </div>
 
                 {/* Avatar */}
-                <div
-                  style={{
-                    width: 34,
-                    height: 34,
-                    flexShrink: 0,
-                    borderRadius: 'var(--radius-full)',
-                    background: tier.bg || 'rgba(255,255,255,0.06)',
-                    border: `1.5px solid ${borderColor || tier.color || 'rgba(255,255,255,0.2)'}`,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    fontSize: '1.15rem',
-                  }}
-                >
-                  {entry.avatar || '🪷'}
-                </div>
+                <PlayerAvatar
+                  avatar={entry.avatar}
+                  size={34}
+                  tierColor={borderColor || tier.color}
+                />
 
                 {/* Name & Subtext */}
                 <div style={{ minWidth: 0, flex: 1 }}>
@@ -296,8 +286,8 @@ export default function LeaderboardTable({ entries = [], currentPlayerId }) {
                       color: isCurrentPlayer ? 'var(--primary)' : 'var(--text)',
                     }}
                   >
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                      <span style={{ fontSize: '1.2rem', lineHeight: 1 }}>{entry.avatar || '🪷'}</span>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.65rem' }}>
+                      <PlayerAvatar avatar={entry.avatar} size={28} tierColor={borderColor || tier.color} />
                       <span style={{ fontWeight: isCurrentPlayer ? 800 : 600 }}>{entry.display_name}</span>
                       {isCurrentPlayer && (
                         <span
