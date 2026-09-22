@@ -27,6 +27,8 @@ import ErrorBoundary from './components/ErrorBoundary'
 import { getSoundEnabled, setSoundEnabled, setUniversalPoints } from './utils/storage'
 import { warmUpBackend } from './services/socket'
 import { getProfile } from './services/api'
+import { ServerWakeupBanner } from './components/ServerWakeupNotice'
+import { useServerHealth, createGuestPlayerIfMissing } from './utils/useServerHealth'
 
 const ModakRush = lazy(() => import('./pages/ModakRush'))
 const DiyaDash = lazy(() => import('./games/diyaDash/DiyaDash'))
@@ -36,43 +38,131 @@ const MushakMaze = lazy(() => import('./games/mushakMaze/MushakMaze'))
 const GanpatiLogic = lazy(() => import('./games/ganpatiLogic/GanpatiLogic'))
 const BlitzMix = lazy(() => import('./pages/BlitzMix'))
 
-const GameLoader = (
-  <div
-    style={{
-      position: 'fixed',
-      inset: 0,
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: '#0a0a1a',
-      zIndex: 200,
-      flexDirection: 'column',
-      gap: '1rem',
-    }}
-  >
-    <div style={{ fontSize: '3rem', animation: 'float 2s ease-in-out infinite' }}>🐘</div>
-    <div style={{ color: 'var(--text-muted)', fontSize: '0.9rem', fontWeight: 600 }}>Loading game...</div>
+function GameLoadingScreen() {
+  const [seconds, setSeconds] = useState(0)
+  const { countdown, isWakingUp } = useServerHealth()
+
+  useEffect(() => {
+    const t = setInterval(() => setSeconds((s) => s + 1), 1000)
+    return () => clearInterval(t)
+  }, [])
+
+  const isSlow = seconds >= 4 || isWakingUp
+
+  return (
     <div
       style={{
-        width: 120,
-        height: 3,
-        borderRadius: 2,
-        background: 'rgba(255,255,255,0.1)',
-        overflow: 'hidden',
+        position: 'fixed',
+        inset: 0,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        background: '#0a0a1a',
+        zIndex: 200,
+        flexDirection: 'column',
+        gap: '1.2rem',
+        padding: '1.5rem',
+        textAlign: 'center',
       }}
     >
+      <div style={{ fontSize: '3rem', animation: 'float 2s ease-in-out infinite' }}>🐘</div>
+      <div>
+        <div style={{ color: '#FFF', fontSize: '1.05rem', fontWeight: 700 }}>
+          {isSlow ? 'Starting Game & Syncing Server...' : 'Loading game...'}
+        </div>
+        {isSlow && (
+          <p
+            style={{
+              color: 'var(--text-muted, #9CA3AF)',
+              fontSize: '0.82rem',
+              maxWidth: 360,
+              margin: '0.4rem auto 0',
+              lineHeight: 1.4,
+            }}
+          >
+            Render free tier backend may be waking up from sleep (~50-60s). Please wait or play offline.
+          </p>
+        )}
+      </div>
+
       <div
         style={{
-          width: '60%',
-          height: '100%',
+          width: 140,
+          height: 4,
           borderRadius: 2,
-          background: 'linear-gradient(90deg, var(--festival-ember), var(--festival-gold))',
-          animation: 'shimmer 1.5s ease-in-out infinite',
+          background: 'rgba(255,255,255,0.1)',
+          overflow: 'hidden',
         }}
-      />
+      >
+        <div
+          style={{
+            width: '60%',
+            height: '100%',
+            borderRadius: 2,
+            background: 'linear-gradient(90deg, var(--festival-ember), var(--festival-gold))',
+            animation: 'shimmer 1.5s ease-in-out infinite',
+          }}
+        />
+      </div>
+
+      {isSlow && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.5rem' }}>
+          <div
+            style={{
+              padding: '0.35rem 0.85rem',
+              borderRadius: '9999px',
+              background: 'rgba(255, 209, 102, 0.1)',
+              border: '1px solid rgba(255, 209, 102, 0.25)',
+              color: '#FFD166',
+              fontSize: '0.78rem',
+              fontWeight: 700,
+            }}
+          >
+            ⏳ Server waking up: ~{countdown}s remaining
+          </div>
+
+          <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'center' }}>
+            <button
+              type="button"
+              onClick={() => window.location.reload()}
+              style={{
+                padding: '0.45rem 0.85rem',
+                borderRadius: '8px',
+                background: 'rgba(255,255,255,0.08)',
+                border: '1px solid rgba(255,255,255,0.15)',
+                color: '#FFF',
+                fontSize: '0.75rem',
+                fontWeight: 700,
+                cursor: 'pointer',
+              }}
+            >
+              🔄 Reload
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                createGuestPlayerIfMissing()
+                window.location.href = '/games'
+              }}
+              style={{
+                padding: '0.45rem 0.85rem',
+                borderRadius: '8px',
+                background: 'linear-gradient(135deg, #FF6B35, #FFD700)',
+                border: 'none',
+                color: '#1a0800',
+                fontSize: '0.75rem',
+                fontWeight: 800,
+                cursor: 'pointer',
+              }}
+            >
+              🎮 Play as Guest
+            </button>
+          </div>
+        </div>
+      )}
     </div>
-  </div>
-)
+  )
+}
 
 // Legacy detail route redirect component
 function DetailRedirect() {
@@ -181,6 +271,7 @@ export default function App() {
   return (
     <div className="app">
       <FestiveBackground />
+      <ServerWakeupBanner />
       <ErrorBoundary>
         <TopNav
           player={player}
@@ -190,7 +281,7 @@ export default function App() {
       </ErrorBoundary>
       <main className="main-content">
         <ErrorBoundary>
-          <Suspense fallback={GameLoader}>
+          <Suspense fallback={<GameLoadingScreen />}>
             <Routes>
               {/* Step 1: Landing Screen */}
               <Route path="/" element={<Home player={player} />} />

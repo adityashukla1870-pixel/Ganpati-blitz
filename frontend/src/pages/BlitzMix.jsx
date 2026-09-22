@@ -1,8 +1,9 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import { Link } from 'react-router-dom'
 import { Check, Clock3, Home, Play, RotateCcw, Sparkles, Trophy, Star, Zap, Target, Brain, Flag, MousePointer, Award, AlertTriangle, Gamepad2, Timer } from 'lucide-react'
 import { submitScore } from '../services/api'
 import { getBestScore, getPlayer, setBestScore, setUniversalPoints } from '../utils/storage'
+import { createGuestPlayerIfMissing } from '../utils/useServerHealth'
 import { LogoSquare, LogoIcon } from '../components/Logo'
 
 const ROUND_SECONDS = 12
@@ -24,8 +25,10 @@ const makeRound = (roundIndex) => {
   return { ...round, count: 0, beatActive: false }
 }
 
-export default function BlitzMix() {
-  const player = getPlayer()
+export default function BlitzMix({ player: propsPlayer }) {
+  const player = useMemo(() => {
+    return propsPlayer || getPlayer() || createGuestPlayerIfMissing()
+  }, [propsPlayer])
   const [state, setState] = useState('idle')
   const [roundIndex, setRoundIndex] = useState(0)
   const [round, setRound] = useState(() => makeRound(0))
@@ -109,7 +112,6 @@ export default function BlitzMix() {
     else setRound({ ...round, input })
   }
 
-  if (!player) return <main style={styles.center}>Set up your player profile first.</main>
   if (state === 'idle') return <main style={styles.center}><section className="card" style={styles.card}><div style={styles.hero}><LogoIcon size={32} /></div><h1>BLITZ MIX</h1><p style={styles.muted}>Six games. Six quick rounds. Every round is scored from 0 to 100.</p><button onClick={start} style={styles.primary}><Play size={18} /> START BLITZ MIX</button><Link to="/games" style={styles.back}>Back to Arcade</Link></section></main>
   if (state === 'result') {
     const total = roundScores.reduce((sum, value) => sum + value, 0)

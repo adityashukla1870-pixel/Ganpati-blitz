@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Volume2, VolumeX, Sparkles, Shield, AlertTriangle, RotateCcw, Flame, Pause } from 'lucide-react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
@@ -10,6 +10,7 @@ import { getBestScore, setBestScore, getSoundEnabled, setSoundEnabled, getPlayer
 import { getSelectedDifficulty, setSelectedDifficulty, recordGameResult, getTierBestScore } from '../../utils/progression';
 import { DIFFICULTY_TIERS } from '../../config/difficulties';
 import { submitScore } from '../../services/api';
+import { createGuestPlayerIfMissing } from '../../utils/useServerHealth';
 
 const GRID_SIZE = 9;
 
@@ -78,7 +79,10 @@ const generateSequence = (length) => {
   return seq;
 };
 
-export default function DiyaDash({ player }) {
+export default function DiyaDash({ player: propsPlayer }) {
+  const player = useMemo(() => {
+    return propsPlayer || getPlayer() || createGuestPlayerIfMissing();
+  }, [propsPlayer]);
   const [searchParams] = useSearchParams();
   const [difficulty, setDifficulty] = useState(() => {
     const p = searchParams.get('diff');

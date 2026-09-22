@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { setUniversalPoints, getPlayer, setPlayer } from '../utils/storage'
+import { triggerServerWakingUp, markServerOnline } from '../utils/useServerHealth'
 
 const defaultApiUrl = import.meta.env.PROD
   ? 'https://ganpati-blitz.onrender.com'
@@ -13,14 +14,27 @@ export const API_URL = rawApiUrl.replace(/\/+$/, '')
 
 const api = axios.create({
   baseURL: API_URL,
-  timeout: 10000,
+  timeout: 60000,
   headers: { 'Content-Type': 'application/json' },
 })
 
 api.interceptors.response.use(
-  (res) => res,
+  (res) => {
+    markServerOnline()
+    return res
+  },
   (error) => {
     console.error('API Error:', error.response?.data || error.message)
+    const isNetworkOrTimeout =
+      !error.response ||
+      error.code === 'ECONNABORTED' ||
+      error.message?.includes('timeout') ||
+      error.message?.includes('Network Error') ||
+      [502, 503, 504].includes(error.response?.status)
+
+    if (isNetworkOrTimeout) {
+      triggerServerWakingUp()
+    }
     return Promise.reject(error)
   }
 )

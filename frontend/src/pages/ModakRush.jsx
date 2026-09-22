@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Volume2, VolumeX, Circle, Sparkles, Flame, AlertTriangle, Zap, Skull, HelpCircle, Star, Pause } from 'lucide-react'
@@ -8,7 +8,8 @@ import Timer from '../components/Timer'
 import ComboDisplay from '../components/ComboDisplay'
 import DifficultySelector from '../components/DifficultySelector'
 import PauseOverlay from '../components/PauseOverlay'
-import { getSoundEnabled, setSoundEnabled } from '../utils/storage'
+import { getSoundEnabled, setSoundEnabled, getPlayer } from '../utils/storage'
+import { createGuestPlayerIfMissing } from '../utils/useServerHealth'
 import { getSelectedDifficulty, setSelectedDifficulty, recordGameResult } from '../utils/progression'
 import { DIFFICULTY_TIERS } from '../config/difficulties'
 import { triggerHaptic, playJuicyAudio } from '../utils/haptics'
@@ -196,7 +197,10 @@ function getComboMultiplier(combo) {
 
 let objIdCounter = 0
 
-export default function ModakRush({ player }) {
+export default function ModakRush({ player: propsPlayer }) {
+  const player = useMemo(() => {
+    return propsPlayer || getPlayer() || createGuestPlayerIfMissing()
+  }, [propsPlayer])
   const navigate = useNavigate()
   const [searchParams] = useSearchParams()
 
@@ -277,10 +281,6 @@ export default function ModakRush({ player }) {
       setParticles((prev) => prev.filter((p) => !newParticles.includes(p)))
     }, 650)
   }, [])
-
-  useEffect(() => {
-    if (!player) navigate('/player')
-  }, [player, navigate])
 
   useEffect(() => {
     setSoundEnabled(isSoundEnabled)
@@ -607,8 +607,6 @@ export default function ModakRush({ player }) {
       handleGameOver()
     }
   }, [gameState, handleGameOver])
-
-  if (!player) return null
 
   return (
     <div

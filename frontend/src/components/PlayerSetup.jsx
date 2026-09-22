@@ -7,6 +7,7 @@ import { setUniversalPoints } from '../utils/storage'
 import { CAMPUSES, DEFAULT_CAMPUS } from '../config/campuses'
 import PlayerAvatar from './PlayerAvatar'
 import { AVATAR_LIST, resolveAvatarId } from '../config/avatars'
+import { useServerHealth, createGuestPlayerIfMissing } from '../utils/useServerHealth'
 
 export default function PlayerSetup({ onSubmit, defaultMode = 'create' }) {
   const [mode, setMode] = useState(defaultMode) // 'create' | 'login'
@@ -17,6 +18,12 @@ export default function PlayerSetup({ onSubmit, defaultMode = 'create' }) {
   const [errors, setErrors] = useState({})
   const [loading, setLoading] = useState(false)
   const [successMsg, setSuccessMsg] = useState('')
+  const { countdown, isWakingUp } = useServerHealth()
+
+  const handlePlayAsGuest = () => {
+    const guest = createGuestPlayerIfMissing()
+    onSubmit?.(guest)
+  }
 
   const validate = () => {
     const newErrors = {}
@@ -73,9 +80,10 @@ export default function PlayerSetup({ onSubmit, defaultMode = 'create' }) {
       const serverErr = err.response?.data?.error
 
       if (!err.response) {
-        // Network / connectivity issue
+        // Network / connectivity issue (Render free tier cold start)
+        const waitSec = countdown > 0 ? countdown : 60
         setErrors({
-          submit: 'Cannot connect to game server. If Render backend is sleeping (free tier), please wait 20-30 seconds and try again.',
+          submit: `Backend server is waking up from sleep (Render Free Tier takes ~50-60s). Please wait ~${waitSec}s, or click "Play as Guest" below to start immediately!`,
         })
       } else if (status === 401) {
         setErrors({
@@ -377,6 +385,24 @@ export default function PlayerSetup({ onSubmit, defaultMode = 'create' }) {
         >
           {loading ? 'Connecting...' : mode === 'login' ? 'Log In & Play' : 'Create Profile & Play'}
         </Button>
+
+        <div style={{ textAlign: 'center', marginTop: '0.85rem' }}>
+          <button
+            type="button"
+            onClick={handlePlayAsGuest}
+            style={{
+              background: 'transparent',
+              border: 'none',
+              color: 'var(--text-muted, #9CA3AF)',
+              fontSize: '0.82rem',
+              cursor: 'pointer',
+              textDecoration: 'underline',
+              padding: '0.2rem',
+            }}
+          >
+            🎮 Or play offline as Guest right now (No wait!)
+          </button>
+        </div>
       </form>
     </motion.div>
   )

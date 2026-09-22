@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Volume2, VolumeX, Play, Sparkles, RotateCw, CheckCircle2, XCircle, Pause } from 'lucide-react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
@@ -10,6 +10,7 @@ import { getBestScore, setBestScore, getSoundEnabled, setSoundEnabled, getPlayer
 import { getSelectedDifficulty, setSelectedDifficulty, recordGameResult, getTierBestScore } from '../../utils/progression';
 import { DIFFICULTY_TIERS } from '../../config/difficulties';
 import { submitScore } from '../../services/api';
+import { createGuestPlayerIfMissing } from '../../utils/useServerHealth';
 
 const SHAPES = ['circle', 'diamond', 'square', 'star', 'lotus'];
 const COLORS = ['#EF4444', '#3B82F6', '#F59E0B', '#10B981', '#EC4899', '#8B5CF6'];
@@ -224,7 +225,10 @@ function generateRangoliPuzzle(tierKey, roundNum) {
   };
 }
 
-export default function RangoliRush({ player }) {
+export default function RangoliRush({ player: propsPlayer }) {
+  const player = useMemo(() => {
+    return propsPlayer || getPlayer() || createGuestPlayerIfMissing();
+  }, [propsPlayer]);
   const [searchParams] = useSearchParams();
   const [difficulty, setDifficulty] = useState(() => {
     const p = searchParams.get('diff');

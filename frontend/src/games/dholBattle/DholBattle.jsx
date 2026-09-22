@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Volume2, VolumeX, Drum, Music, Zap, Skull, Pause } from 'lucide-react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
@@ -11,6 +11,7 @@ import { getSelectedDifficulty, setSelectedDifficulty, recordGameResult, getTier
 import { DIFFICULTY_TIERS } from '../../config/difficulties';
 import { submitScore } from '../../services/api';
 import { triggerHaptic } from '../../utils/haptics';
+import { createGuestPlayerIfMissing } from '../../utils/useServerHealth';
 
 const GAME_DURATION = 40;
 
@@ -79,7 +80,10 @@ const TIER_PARAMS = {
 
 const LANE_COLORS = ['#ff6b35', '#f59e0b', '#38bdf8', '#a855f7'];
 
-export default function DholBattle({ player }) {
+export default function DholBattle({ player: propsPlayer }) {
+  const player = useMemo(() => {
+    return propsPlayer || getPlayer() || createGuestPlayerIfMissing();
+  }, [propsPlayer]);
   const [searchParams] = useSearchParams();
   const [difficulty, setDifficulty] = useState(() => {
     const p = searchParams.get('diff');

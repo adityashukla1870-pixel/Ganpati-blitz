@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Volume2, VolumeX, Pause, ArrowUp, ArrowDown, ArrowLeft, ArrowRight, Sparkles } from 'lucide-react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
@@ -6,10 +6,11 @@ import Countdown from '../../components/Countdown';
 import GameResult from '../shared/GameResult';
 import DifficultySelector from '../../components/DifficultySelector';
 import PauseOverlay from '../../components/PauseOverlay';
-import { getBestScore, getSoundEnabled, setSoundEnabled, setUniversalPoints } from '../../utils/storage';
+import { getBestScore, getSoundEnabled, setSoundEnabled, setUniversalPoints, getPlayer } from '../../utils/storage';
 import { getSelectedDifficulty, setSelectedDifficulty, recordGameResult, getTierBestScore } from '../../utils/progression';
 import { DIFFICULTY_TIERS } from '../../config/difficulties';
 import { submitScore } from '../../services/api';
+import { createGuestPlayerIfMissing } from '../../utils/useServerHealth';
 
 // 19 cols x 21 rows symmetrical temple labyrinth
 const MAP_TEMPLATE = [
@@ -138,7 +139,10 @@ function createInitialBoard(tier) {
   return { grid, dots, spawnedCats };
 }
 
-export default function MushakMaze({ player }) {
+export default function MushakMaze({ player: propsPlayer }) {
+  const player = useMemo(() => {
+    return propsPlayer || getPlayer() || createGuestPlayerIfMissing();
+  }, [propsPlayer]);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
 
